@@ -39,6 +39,9 @@ jobs:
           s = p.read_text()
           s = s.replace('export function safeReturnTo() {\n  const raw =', "export function safeReturnTo() {\n  if (typeof window === 'undefined') return '/';\n  const raw =")
           p.write_text(s)
+
+          p = Path('app/reset-password/page.jsx')
+          p.write_text("""import { Suspense } from 'react';\nimport PageContent from '@/screens/ResetPassword';\n\nexport const metadata = { robots: { index: false, follow: false }, alternates: { canonical: '/reset-password' } };\n\nexport default function Page() {\n  return (\n    <Suspense fallback={null}>\n      <PageContent />\n    </Suspense>\n  );\n}\n""")
           PY
 
       - name: Install dependencies
