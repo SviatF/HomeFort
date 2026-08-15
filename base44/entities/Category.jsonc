@@ -1,0 +1,101 @@
+{
+  "name": "Category",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "title": "\u041a\u043b\u044e\u0447 (Product.category)"
+    },
+    "name": {
+      "type": "string",
+      "title": "\u041d\u0430\u0437\u0432\u0430"
+    },
+    "h1": {
+      "type": "string",
+      "title": "H1"
+    },
+    "seoTitle": {
+      "type": "string",
+      "title": "SEO Title"
+    },
+    "seoDescription": {
+      "type": "string",
+      "title": "Meta Description"
+    },
+    "seoIntro": {
+      "type": "string",
+      "title": "SEO Intro"
+    },
+    "canonicalUrl": {
+      "type": "string",
+      "title": "Canonical URL"
+    },
+    "image": {
+      "type": "string",
+      "title": "\u0417\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u043d\u044f"
+    },
+    "imageAlt": {
+      "type": "string",
+      "title": "Alt \u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u043d\u044f"
+    },
+    "ogTitle": {
+      "type": "string",
+      "title": "OG Title"
+    },
+    "ogDescription": {
+      "type": "string",
+      "title": "OG Description"
+    },
+    "ogImage": {
+      "type": "string",
+      "title": "OG Image"
+    },
+    "indexable": {
+      "type": "boolean",
+      "title": "\u0406\u043d\u0434\u0435\u043a\u0441\u0443\u0432\u0430\u0442\u0438",
+      "default": true
+    },
+    "faq": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          },
+          "a": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "FAQ"
+    },
+    "order": {
+      "type": "number",
+      "title": "\u041f\u043e\u0440\u044f\u0434\u043e\u043a",
+      "default": 0
+    }
+  },
+  "required": [
+    "key",
+    "name"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

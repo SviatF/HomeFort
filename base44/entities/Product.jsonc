@@ -1,0 +1,307 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "\u041d\u0430\u0437\u0432\u0430"
+    },
+    "slug": {
+      "type": "string",
+      "title": "Slug"
+    },
+    "sku": {
+      "type": "string",
+      "title": "\u0410\u0440\u0442\u0438\u043a\u0443\u043b"
+    },
+    "category": {
+      "type": "string",
+      "title": "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0456\u044f",
+      "enum": [
+        "beds",
+        "mattresses",
+        "toppers",
+        "pillows",
+        "duvets",
+        "bedding",
+        "kids-mattresses"
+      ]
+    },
+    "subcategory": {
+      "type": "string",
+      "title": "\u041f\u0456\u0434\u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0456\u044f"
+    },
+    "shortDescription": {
+      "type": "string",
+      "title": "\u041a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 \u043e\u043f\u0438\u0441"
+    },
+    "fullDescription": {
+      "type": "string",
+      "title": "\u041f\u043e\u0432\u043d\u0438\u0439 \u043e\u043f\u0438\u0441"
+    },
+    "price": {
+      "type": "number",
+      "title": "\u0426\u0456\u043d\u0430"
+    },
+    "oldPrice": {
+      "type": "number",
+      "title": "\u0421\u0442\u0430\u0440\u0430 \u0446\u0456\u043d\u0430"
+    },
+    "salePercent": {
+      "type": "number",
+      "title": "\u0417\u043d\u0438\u0436\u043a\u0430 %",
+      "default": 0
+    },
+    "availability": {
+      "type": "string",
+      "title": "\u041d\u0430\u044f\u0432\u043d\u0456\u0441\u0442\u044c",
+      "enum": [
+        "in_stock",
+        "made_to_order",
+        "out_of_stock"
+      ],
+      "default": "made_to_order"
+    },
+    "productionTime": {
+      "type": "string",
+      "title": "\u0422\u0435\u0440\u043c\u0456\u043d \u0432\u0438\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u043d\u044f"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u0417\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u043d\u044f"
+    },
+    "videoUrl": {
+      "type": "string",
+      "title": "\u0412\u0456\u0434\u0435\u043e URL"
+    },
+    "colors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u041a\u043e\u043b\u044c\u043e\u0440\u0438 (hex)"
+    },
+    "fabrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u0422\u043a\u0430\u043d\u0438\u043d\u0438"
+    },
+    "sizes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u0420\u043e\u0437\u043c\u0456\u0440\u0438"
+    },
+    "material": {
+      "type": "string",
+      "title": "\u041c\u0430\u0442\u0435\u0440\u0456\u0430\u043b"
+    },
+    "liftingMechanism": {
+      "type": "boolean",
+      "title": "\u041f\u0456\u0434\u0439\u043e\u043c\u043d\u0438\u0439 \u043c\u0435\u0445\u0430\u043d\u0456\u0437\u043c",
+      "default": false
+    },
+    "dimensions": {
+      "type": "string",
+      "title": "\u0413\u0430\u0431\u0430\u0440\u0438\u0442\u0438"
+    },
+    "height": {
+      "type": "string",
+      "title": "\u0412\u0438\u0441\u043e\u0442\u0430"
+    },
+    "weight": {
+      "type": "string",
+      "title": "\u0412\u0430\u0433\u0430"
+    },
+    "sleepingWidth": {
+      "type": "string",
+      "title": "\u0428\u0438\u0440\u0438\u043d\u0430 \u0441\u043f\u0430\u043b\u044c\u043d\u043e\u0433\u043e \u043c\u0456\u0441\u0446\u044f"
+    },
+    "sleepingLength": {
+      "type": "string",
+      "title": "\u0414\u043e\u0432\u0436\u0438\u043d\u0430 \u0441\u043f\u0430\u043b\u044c\u043d\u043e\u0433\u043e \u043c\u0456\u0441\u0446\u044f"
+    },
+    "externalWidth": {
+      "type": "string",
+      "title": "\u0417\u043e\u0432\u043d\u0456\u0448\u043d\u044f \u0448\u0438\u0440\u0438\u043d\u0430"
+    },
+    "externalLength": {
+      "type": "string",
+      "title": "\u0417\u043e\u0432\u043d\u0456\u0448\u043d\u044f \u0434\u043e\u0432\u0436\u0438\u043d\u0430"
+    },
+    "headboardHeight": {
+      "type": "string",
+      "title": "\u0412\u0438\u0441\u043e\u0442\u0430 \u0441\u043f\u0438\u043d\u043a\u0438"
+    },
+    "bedHeight": {
+      "type": "string",
+      "title": "\u0412\u0438\u0441\u043e\u0442\u0430 \u043b\u0456\u0436\u043a\u0430"
+    },
+    "clearanceFromFloor": {
+      "type": "string",
+      "title": "\u041a\u043b\u0456\u0440\u0435\u043d\u0441 \u0432\u0456\u0434 \u043f\u0456\u0434\u043b\u043e\u0433\u0438"
+    },
+    "technicalDrawing": {
+      "type": "string",
+      "title": "\u0422\u0435\u0445\u043d\u0456\u0447\u043d\u0435 \u043a\u0440\u0435\u0441\u043b\u0435\u043d\u043d\u044f"
+    },
+    "hardness": {
+      "type": "string",
+      "title": "\u0416\u043e\u0440\u0441\u0442\u043a\u0456\u0441\u0442\u044c"
+    },
+    "springType": {
+      "type": "string",
+      "title": "\u0422\u0438\u043f \u043f\u0440\u0443\u0436\u0438\u043d"
+    },
+    "loadPerSleeper": {
+      "type": "string",
+      "title": "\u041d\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f \u043d\u0430 \u0441\u043f\u0430\u043b\u044c\u043d\u0435 \u043c\u0456\u0441\u0446\u0435"
+    },
+    "coverMaterial": {
+      "type": "string",
+      "title": "\u041c\u0430\u0442\u0435\u0440\u0456\u0430\u043b \u0447\u043e\u0445\u043b\u0430"
+    },
+    "coverRemovable": {
+      "type": "boolean",
+      "title": "\u0417\u043d\u0456\u043c\u043d\u0438\u0439 \u0447\u043e\u0445\u043e\u043b",
+      "default": false
+    },
+    "frameMaterial": {
+      "type": "string",
+      "title": "\u041c\u0430\u0442\u0435\u0440\u0456\u0430\u043b \u043a\u0430\u0440\u043a\u0430\u0441\u0430"
+    },
+    "foamType": {
+      "type": "string",
+      "title": "\u0422\u0438\u043f \u043f\u0456\u043d\u0438"
+    },
+    "foamDensity": {
+      "type": "string",
+      "title": "\u0429\u0456\u043b\u044c\u043d\u0456\u0441\u0442\u044c \u043f\u0456\u043d\u0438"
+    },
+    "hardware": {
+      "type": "string",
+      "title": "\u0424\u0443\u0440\u043d\u0456\u0442\u0443\u0440\u0430"
+    },
+    "fabricComposition": {
+      "type": "string",
+      "title": "\u0421\u043a\u043b\u0430\u0434 \u0442\u043a\u0430\u043d\u0438\u043d\u0438"
+    },
+    "fabricDurability": {
+      "type": "string",
+      "title": "\u0417\u043d\u043e\u0441\u043e\u0441\u0442\u0456\u0439\u043a\u0456\u0441\u0442\u044c \u0442\u043a\u0430\u043d\u0438\u043d\u0438"
+    },
+    "mechanismManufacturer": {
+      "type": "string",
+      "title": "\u0412\u0438\u0440\u043e\u0431\u043d\u0438\u043a \u043c\u0435\u0445\u0430\u043d\u0456\u0437\u043c\u0443"
+    },
+    "legsMaterial": {
+      "type": "string",
+      "title": "\u041c\u0430\u0442\u0435\u0440\u0456\u0430\u043b \u043d\u0456\u0436\u043e\u043a"
+    },
+    "certifications": {
+      "type": "string",
+      "title": "\u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043a\u0430\u0446\u0456\u044f"
+    },
+    "specifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "\u0414\u043e\u0434\u0430\u0442\u043a\u043e\u0432\u0456 \u0445\u0430\u0440\u0430\u043a\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043a\u0438"
+    },
+    "warranty": {
+      "type": "string",
+      "title": "\u0413\u0430\u0440\u0430\u043d\u0442\u0456\u044f"
+    },
+    "rating": {
+      "type": "number",
+      "title": "\u0420\u0435\u0439\u0442\u0438\u043d\u0433",
+      "default": 0
+    },
+    "reviewsCount": {
+      "type": "number",
+      "title": "\u041a-\u0441\u0442\u044c \u0432\u0456\u0434\u0433\u0443\u043a\u0456\u0432",
+      "default": 0
+    },
+    "featured": {
+      "type": "boolean",
+      "title": "\u0411\u0435\u0441\u0442\u0441\u0435\u043b\u0435\u0440",
+      "default": false
+    },
+    "seoTitle": {
+      "type": "string",
+      "title": "SEO Title"
+    },
+    "seoDescription": {
+      "type": "string",
+      "title": "SEO Description"
+    },
+    "seoH1": {
+      "type": "string",
+      "title": "SEO H1"
+    },
+    "canonicalUrl": {
+      "type": "string",
+      "title": "Canonical URL"
+    },
+    "indexable": {
+      "type": "boolean",
+      "title": "\u0406\u043d\u0434\u0435\u043a\u0441\u0443\u0432\u0430\u0442\u0438",
+      "default": true
+    },
+    "ogTitle": {
+      "type": "string",
+      "title": "OG Title"
+    },
+    "ogDescription": {
+      "type": "string",
+      "title": "OG Description"
+    },
+    "ogImage": {
+      "type": "string",
+      "title": "OG Image"
+    },
+    "imageAlt": {
+      "type": "string",
+      "title": "Alt \u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u043d\u044f"
+    }
+  },
+  "required": [
+    "name",
+    "slug",
+    "category",
+    "price"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

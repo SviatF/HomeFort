@@ -1,0 +1,50 @@
+{
+  "name": "Review Request",
+  "description": "\u0427\u0435\u0440\u0435\u0437 3 \u0434\u043d\u0456 \u043f\u0456\u0441\u043b\u044f \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438 \u0437\u0430\u043c\u043e\u0432\u043b\u0435\u043d\u043d\u044f \u2014 \u0437\u0430\u043f\u0438\u0442 \u0432\u0456\u0434\u0433\u0443\u043a\u0443 \u043a\u043b\u0456\u0454\u043d\u0442\u0443 email",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "Order",
+      "events": [
+        "update"
+      ]
+    },
+    "condition": "${ .trigger.data.status == \"delivered\" and .trigger.old_data.status != \"delivered\" }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "review_request",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "wait_3d": {
+          "wait": "P3D",
+          "then": "request",
+          "x-base44": {
+            "title": "\u0427\u0435\u043a\u0430\u0442\u0438 3 \u0434\u043d\u0456",
+            "description": "\u041f\u0456\u0441\u043b\u044f \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438"
+          }
+        }
+      },
+      {
+        "request": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "requestReview",
+            "args": {
+              "order_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "\u0417\u0430\u043f\u0438\u0442 \u0432\u0456\u0434\u0433\u0443\u043a\u0443",
+            "description": "Email \u043a\u043b\u0456\u0454\u043d\u0442\u0443"
+          }
+        }
+      }
+    ]
+  }
+}

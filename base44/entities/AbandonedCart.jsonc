@@ -1,0 +1,75 @@
+{
+  "name": "AbandonedCart",
+  "type": "object",
+  "properties": {
+    "cartId": {
+      "type": "string",
+      "title": "Cart ID"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "title": "\u0422\u043e\u0432\u0430\u0440\u0438"
+    },
+    "total": {
+      "type": "number",
+      "title": "\u0421\u0443\u043c\u0430",
+      "default": 0
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "phone": {
+      "type": "string",
+      "title": "\u0422\u0435\u043b\u0435\u0444\u043e\u043d"
+    },
+    "name": {
+      "type": "string",
+      "title": "\u0406\u043c'\u044f"
+    },
+    "userId": {
+      "type": "string",
+      "title": "User ID"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "notified",
+        "recovered",
+        "expired"
+      ],
+      "default": "pending",
+      "title": "\u0421\u0442\u0430\u0442\u0443\u0441"
+    }
+  },
+  "required": [
+    "cartId",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

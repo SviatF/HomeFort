@@ -1,0 +1,121 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "leadType": {
+      "type": "string",
+      "title": "\u0422\u0438\u043f \u043b\u0456\u0434\u0430",
+      "enum": [
+        "consultation",
+        "quiz",
+        "one_click",
+        "fabric_sample",
+        "callback"
+      ],
+      "default": "consultation"
+    },
+    "name": {
+      "type": "string",
+      "title": "\u0406\u043c'\u044f"
+    },
+    "phone": {
+      "type": "string",
+      "title": "\u0422\u0435\u043b\u0435\u0444\u043e\u043d"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "productId": {
+      "type": "string",
+      "title": "Product ID"
+    },
+    "variantSKU": {
+      "type": "string",
+      "title": "Variant SKU"
+    },
+    "configuration": {
+      "type": "string",
+      "title": "\u041a\u043e\u043d\u0444\u0456\u0433\u0443\u0440\u0430\u0446\u0456\u044f"
+    },
+    "quizResult": {
+      "type": "string",
+      "title": "\u0420\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u043a\u0432\u0456\u0437\u0443"
+    },
+    "fabricSamples": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u0417\u0440\u0430\u0437\u043a\u0438 \u0442\u043a\u0430\u043d\u0438\u043d"
+    },
+    "message": {
+      "type": "string",
+      "title": "\u041f\u043e\u0432\u0456\u0434\u043e\u043c\u043b\u0435\u043d\u043d\u044f"
+    },
+    "utmSource": {
+      "type": "string",
+      "title": "UTM Source"
+    },
+    "utmMedium": {
+      "type": "string",
+      "title": "UTM Medium"
+    },
+    "utmCampaign": {
+      "type": "string",
+      "title": "UTM Campaign"
+    },
+    "utmContent": {
+      "type": "string",
+      "title": "UTM Content"
+    },
+    "utmTerm": {
+      "type": "string",
+      "title": "UTM Term"
+    },
+    "landingPage": {
+      "type": "string",
+      "title": "Landing Page"
+    },
+    "status": {
+      "type": "string",
+      "title": "\u0421\u0442\u0430\u0442\u0443\u0441",
+      "enum": [
+        "new",
+        "contacted",
+        "qualified",
+        "won",
+        "lost"
+      ],
+      "default": "new"
+    }
+  },
+  "required": [
+    "leadType",
+    "name",
+    "phone",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

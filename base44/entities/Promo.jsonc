@@ -1,0 +1,99 @@
+{
+  "name": "Promo",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "\u041d\u0430\u0437\u0432\u0430"
+    },
+    "description": {
+      "type": "string",
+      "title": "\u041e\u043f\u0438\u0441"
+    },
+    "type": {
+      "type": "string",
+      "title": "\u0422\u0438\u043f \u0437\u043d\u0438\u0436\u043a\u0438",
+      "enum": [
+        "percent",
+        "fixed"
+      ],
+      "default": "percent"
+    },
+    "value": {
+      "type": "number",
+      "title": "\u0417\u043d\u0430\u0447\u0435\u043d\u043d\u044f \u0437\u043d\u0438\u0436\u043a\u0438",
+      "default": 0
+    },
+    "couponCode": {
+      "type": "string",
+      "title": "\u041f\u0440\u043e\u043c\u043e\u043a\u043e\u0434"
+    },
+    "productIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u0422\u043e\u0432\u0430\u0440\u0438 (\u043f\u043e\u0440\u043e\u0436\u043d\u044c\u043e = \u0432\u0441\u0456)"
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0456\u0457 (\u043f\u043e\u0440\u043e\u0436\u043d\u044c\u043e = \u0432\u0441\u0456)"
+    },
+    "minOrderValue": {
+      "type": "number",
+      "title": "\u041c\u0456\u043d\u0456\u043c\u0430\u043b\u044c\u043d\u0430 \u0441\u0443\u043c\u0430 \u0437\u0430\u043c\u043e\u0432\u043b\u0435\u043d\u043d\u044f",
+      "default": 0
+    },
+    "startDate": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u0414\u0430\u0442\u0430 \u043f\u043e\u0447\u0430\u0442\u043a\u0443"
+    },
+    "endDate": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u0414\u0430\u0442\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u043d\u044f"
+    },
+    "usageLimit": {
+      "type": "number",
+      "title": "\u041b\u0456\u043c\u0456\u0442 \u0432\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u0430\u043d\u044c",
+      "default": 0
+    },
+    "usageCount": {
+      "type": "number",
+      "title": "\u0412\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u0430\u043d\u043e",
+      "default": 0
+    },
+    "active": {
+      "type": "boolean",
+      "title": "\u0410\u043a\u0442\u0438\u0432\u043d\u0430",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "value"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
