@@ -29,9 +29,15 @@ jobs:
           grep -RIl "@/pages/" app src | xargs -r sed -i "s#@/pages/#@/screens/#g"
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path('src/lib/utils.js')
           s = p.read_text()
           s = s.replace('export const isIframe = window.self !== window.top;', "export const isIframe = typeof window !== 'undefined' && window.self !== window.top;")
+          p.write_text(s)
+
+          p = Path('src/lib/authReturnTo.js')
+          s = p.read_text()
+          s = s.replace('export function safeReturnTo() {\n  const raw =', "export function safeReturnTo() {\n  if (typeof window === 'undefined') return '/';\n  const raw =")
           p.write_text(s)
           PY
 
