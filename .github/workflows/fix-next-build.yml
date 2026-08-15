@@ -23,12 +23,19 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Move legacy page components out of Next pages router namespace
+      - name: Apply Next.js SSR migration fixes
         run: |
           if [ -d src/pages ]; then
             mv src/pages src/screens
           fi
           grep -RIl "@/pages/" app src | xargs -r sed -i "s#@/pages/#@/screens/#g"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/lib/utils.js')
+          s = p.read_text()
+          s = s.replace('export const isIframe = window.self !== window.top;', "export const isIframe = typeof window !== 'undefined' && window.self !== window.top;")
+          p.write_text(s)
+          PY
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -39,10 +46,10 @@ jobs:
       - name: Remove one-time workflow
         run: rm -f .github/workflows/fix-next-build.yml
 
-      - name: Commit build fix
+      - name: Commit build fixes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "fix: resolve Next.js app/pages directory conflict"
+          git commit -m "fix: make DOMERA Next.js build SSR-safe"
           git push origin main
