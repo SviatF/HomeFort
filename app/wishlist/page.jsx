@@ -1,4 +1,4 @@
-import PageContent from '@/pages/Wishlist';
+import PageContent from '@/screens/Wishlist';
 
 export const metadata = { robots: { index: false, follow: false }, alternates: { canonical: '/wishlist' } };
 

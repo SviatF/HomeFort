@@ -1,4 +1,4 @@
-import PageContent from '@/pages/OrderStatus';
+import PageContent from '@/screens/OrderStatus';
 
 export const metadata = { robots: { index: false, follow: false }, alternates: { canonical: '/order-status' } };
 

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import Product from '@/pages/Product';
+import Product from '@/screens/Product';
 import { filterEntity } from '@/lib/base44-server';
 
 async function getProductData(slug) {

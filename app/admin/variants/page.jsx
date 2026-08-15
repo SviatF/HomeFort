@@ -1,2 +1,2 @@
-import PageContent from '@/pages/admin/AdminVariants';
+import PageContent from '@/screens/admin/AdminVariants';
 export default function Page(){ return <PageContent/>; }

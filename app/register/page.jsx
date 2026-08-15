@@ -1,4 +1,4 @@
-import PageContent from '@/pages/Register';
+import PageContent from '@/screens/Register';
 
 export const metadata = { robots: { index: false, follow: false }, alternates: { canonical: '/register' } };
 

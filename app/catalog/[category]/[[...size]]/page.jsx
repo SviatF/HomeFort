@@ -1,4 +1,4 @@
-import Catalog from '@/pages/Catalog';
+import Catalog from '@/screens/Catalog';
 import { filterEntity } from '@/lib/base44-server';
 
 const fallbackTitles = {

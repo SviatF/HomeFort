@@ -1,4 +1,4 @@
-import PageContent from '@/pages/DeliveryPayment';
+import PageContent from '@/screens/DeliveryPayment';
 export const metadata = {
   title: 'Доставка, оплата та гарантія — DOMERA',
   description: 'Умови доставки по Україні, способи оплати, гарантія та повернення товарів DOMERA.',

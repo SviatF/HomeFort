@@ -1,4 +1,4 @@
-import PageContent from '@/pages/Quiz';
+import PageContent from '@/screens/Quiz';
 export const metadata = {
   title: 'Підбір сну — DOMERA',
   description: 'Пройдіть короткий підбір і отримайте індивідуальну рекомендацію матраца, подушки та ковдри DOMERA.',

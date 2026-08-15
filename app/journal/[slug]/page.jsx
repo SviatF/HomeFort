@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import JournalArticle from '@/pages/JournalArticle';
+import JournalArticle from '@/screens/JournalArticle';
 import { filterEntity, listEntity } from '@/lib/base44-server';
 
 async function getData(slug) {

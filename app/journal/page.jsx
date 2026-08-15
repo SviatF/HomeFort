@@ -1,4 +1,4 @@
-import Journal from '@/pages/Journal';
+import Journal from '@/screens/Journal';
 import { filterEntity } from '@/lib/base44-server';
 
 export const metadata = {

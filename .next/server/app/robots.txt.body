@@ -1,0 +1,14 @@
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /checkout
+Disallow: /order-success/
+Disallow: /order-status
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /wishlist
+
+Host: https://domera.shop
+Sitemap: https://domera.shop/sitemap.xml

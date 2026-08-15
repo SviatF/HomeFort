@@ -1,4 +1,4 @@
-import PageContent from '@/pages/Partners';
+import PageContent from '@/screens/Partners';
 export const metadata = {
   title: 'DOMERA для партнерів — опт, дропшипінг, B2B | Виробництво ліжок та матраців',
   description: 'Співпраця з DOMERA для дизайнерів, меблевих магазинів, готелів та забудовників: опт, дропшипінг, серійне виробництво ліжок, матраців та текстилю від власного цеху.',

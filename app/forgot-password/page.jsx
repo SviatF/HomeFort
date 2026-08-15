@@ -1,4 +1,4 @@
-import PageContent from '@/pages/ForgotPassword';
+import PageContent from '@/screens/ForgotPassword';
 
 export const metadata = { robots: { index: false, follow: false }, alternates: { canonical: '/forgot-password' } };
 
