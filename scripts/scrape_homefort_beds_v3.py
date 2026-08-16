@@ -57,7 +57,6 @@ def collect_images(soup, j):
     result=[];seen=set()
     for u in unique:
         if folder_key(u)!=folder:continue
-        # Anchor gallery URLs are already 1000x1000; normalize cached thumbnails to same resolution.
         u=re.sub(r'-\d{2,4}x\d{2,4}(?=\.(?:png|jpe?g|webp)(?:\?|$))','-1000x1000',u,flags=re.I)
         if u not in seen:
             seen.add(u);result.append(u)
@@ -67,14 +66,17 @@ def collect_images(soup, j):
 def parse_real_product(url):
     p=_original_parse(url)
     name=(p.get('name') or '').strip()
-    # SEO landing pages use generic names like “Ліжко двоспальне 160х200”.
-    # Real catalog cards consistently carry Homefort in the product name or are concrete product bundles.
     real = ('homefort' in name.lower() or name.lower().startswith('комплект ліжко') or name.lower().startswith('комплект каркас'))
     if not real:
         raise ValueError(f'not a product card: {name}')
     return p
 
-core.fetch=fetch_retry
-core.collect_images=collect_images
-core.parse_product=parse_real_product
-core.main()
+
+def run():
+    core.fetch=fetch_retry
+    core.collect_images=collect_images
+    core.parse_product=parse_real_product
+    core.main()
+
+if __name__=='__main__':
+    run()
