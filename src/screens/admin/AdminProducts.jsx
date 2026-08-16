@@ -34,7 +34,7 @@ export default function AdminProducts() {
         setImportStatus(`Імпорт ${i + 1}/${sourceProducts.length}: ${source.name || source.slug}`);
         const payload = {};
         for (const [key, value] of Object.entries(source)) {
-          if (schemaKeys.has(key) && value !== undefined) payload[key] = value;
+          if (schemaKeys.has(key) && value !== undefined && value !== null) payload[key] = value;
         }
         // Imported products are ordinary Base44 Product records and remain fully editable in this admin panel.
         payload.category = 'beds';
