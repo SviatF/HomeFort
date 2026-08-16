@@ -1,5 +1,6 @@
 import Catalog from '@/screens/Catalog';
 import { filterEntity } from '@/lib/base44-server';
+import { getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
 
 const fallbackTitles = {
   beds: ['Ліжка', 'М’які ліжка, моделі з підйомним механізмом та преміум-рішення від власного виробництва DOMERA.'],
@@ -14,10 +15,13 @@ const fallbackTitles = {
 function normalizeSize(parts) { return Array.isArray(parts) ? parts[0] : parts || ''; }
 
 async function getData(category) {
-  const [products, cats] = await Promise.all([
+  const [editableProducts, cats] = await Promise.all([
     filterEntity('Product', { category }),
     filterEntity('Category', { key: category }),
   ]);
+  const products = category === 'beds'
+    ? mergeEditableProducts(getHomefortBeds(), editableProducts)
+    : editableProducts;
   return { products, categoryEntity: cats[0] || null };
 }
 
