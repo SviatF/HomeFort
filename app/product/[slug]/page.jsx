@@ -1,12 +1,20 @@
 import { notFound } from 'next/navigation';
 import Product from '@/screens/Product';
 import { filterEntity } from '@/lib/base44-server';
+import { getHomefortBedBySlug, getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
 
 async function getProductData(slug) {
   const products = await filterEntity('Product', { slug });
-  const product = products[0] || null;
+  const editableProduct = products[0] || null;
+  const staticProduct = getHomefortBedBySlug(slug);
+  const product = editableProduct ? { ...(staticProduct || {}), ...editableProduct } : staticProduct;
   if (!product) return { product: null, related: [], mattresses: [], crossSell: [] };
-  const relatedAll = await filterEntity('Product', { category: product.category });
+
+  const editableRelated = await filterEntity('Product', { category: product.category });
+  const relatedAll = product.category === 'beds'
+    ? mergeEditableProducts(getHomefortBeds(), editableRelated)
+    : editableRelated;
+
   let mattresses = [], crossSell = [];
   if (product.category === 'beds') {
     const [mats, tops, bedding, pillows] = await Promise.all([
@@ -16,7 +24,7 @@ async function getProductData(slug) {
     mattresses = mats.slice(0, 4);
     crossSell = [...mats, ...tops, ...bedding, ...pillows].filter((p) => p.id !== product.id);
   }
-  return { product, related: relatedAll.filter((p) => p.id !== product.id).slice(0, 3), mattresses, crossSell };
+  return { product, related: relatedAll.filter((p) => p.slug !== product.slug).slice(0, 3), mattresses, crossSell };
 }
 
 export async function generateMetadata({ params }) {
