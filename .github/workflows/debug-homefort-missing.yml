@@ -1,0 +1,42 @@
+name: Debug Missing Homefort Product
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/debug-homefort-missing.yml']
+permissions:
+  contents: write
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4 lxml
+      - name: Identify indices around missing item
+        run: |
+          cd scripts
+          python - <<'PY'
+          import scrape_homefort_beds as s
+          from bs4 import BeautifulSoup
+          links=s.product_links()
+          for idx in range(68,74):
+              u=links[idx-1]
+              soup=BeautifulSoup(s.fetch(u),'lxml')
+              h1=s.text(soup.find('h1'))
+              try:
+                  p=s.parse_product(u)
+              except Exception as e:
+                  p={'error':repr(e)}
+              print('INDEX',idx,'URL',u,'H1',h1,'PRICE',p.get('price'),'SKU',p.get('sku'),'ERROR',p.get('error'))
+          PY
+      - name: Remove debug workflow
+        run: |
+          rm .github/workflows/debug-homefort-missing.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove Homefort debug workflow"
+          git pull --rebase origin main
+          git push origin main
