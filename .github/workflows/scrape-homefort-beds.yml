@@ -21,14 +21,14 @@ jobs:
           python-version: '3.12'
       - name: Install scraper dependencies
         run: pip install requests beautifulsoup4 lxml
-      - name: Scrape real product cards and complete galleries
-        run: python scripts/scrape_homefort_beds_v2.py
+      - name: Scrape validated products and complete galleries
+        run: python scripts/scrape_homefort_beds_v3.py
       - name: Commit catalog dataset and remove one-time workflow
         run: |
           rm -f .github/workflows/scrape-homefort-beds.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/data/homefort-beds.json .github/workflows/scrape-homefort-beds.yml
-          git commit -m "data: import strict Homefort beds catalog"
+          git commit -m "data: import validated Homefort beds catalog"
           git pull --rebase origin main
           git push origin main
