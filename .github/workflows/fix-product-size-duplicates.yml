@@ -1,0 +1,50 @@
+name: Normalize product sizes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-product-size-duplicates.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Normalize product size variants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/screens/Product.jsx')
+          s = p.read_text()
+
+          marker = "const CATEGORY_NAMES = {\n  beds: 'Ліжка',\n  mattresses: 'Матраци',\n  toppers: 'Наматрацники',\n  pillows: 'Подушки',\n  duvets: 'Ковдри',\n  bedding: 'Постільна білизна',\n  'kids-mattresses': 'Дитячі матраци',\n};\n"
+          helper = marker + "\nconst normalizeProductSize = (value = '') => {\n  const raw = String(value).trim().toLowerCase().replace(/\\s+/g, '');\n  const match = raw.match(/(\\d{2,3})\\D+(\\d{2,3})/);\n  if (!match) return String(value).trim();\n  return `${Number(match[1])}×${Number(match[2])}`;\n};\n\nconst uniqueProductSizes = (sizes = []) => {\n  const seen = new Set();\n  return sizes\n    .map(normalizeProductSize)\n    .filter((value) => {\n      if (!value || seen.has(value)) return false;\n      seen.add(value);\n      return true;\n    });\n};\n"
+          if 'const normalizeProductSize' not in s:
+              s = s.replace(marker, helper)
+
+          s = s.replace("const [size, setSize] = useState(initialProduct?.sizes?.[0] || '');", "const [size, setSize] = useState(normalizeProductSize(initialProduct?.sizes?.[0] || ''));" )
+          s = s.replace("setSize(initialProduct.sizes?.[0] || '');", "setSize(normalizeProductSize(initialProduct.sizes?.[0] || ''));" )
+          s = s.replace("setSize(p.sizes?.[0] || '');", "setSize(normalizeProductSize(p.sizes?.[0] || ''));" )
+
+          old = """              {/* Size */}\n              {product.sizes?.length > 0 && (\n                <div className=\"mt-7\">\n                  <p className=\"text-[11px] tracking-[0.22em] uppercase text-mocha mb-3\">Розмір</p>\n                  <div className=\"flex flex-wrap gap-2\">\n                    {product.sizes.map((s) => (\n                      <button key={s} onClick={() => setSize(s)} className={`px-4 py-2.5 border text-sm transition-all ${size === s ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>\n                    ))}\n                  </div>\n                  {size && <Link to={`/catalog/${product.category}/${sizeToSlug(size)}`} className=\"mt-3 inline-block text-xs text-champagne underline underline-offset-4 hover:text-espresso\">Дивитись усі {CATEGORY_NAMES[product.category]?.toLowerCase() || 'товари'} {size} →</Link>}\n                </div>\n              )}\n"""
+          new = """              {/* Size */}\n              {uniqueProductSizes(product.sizes).length > 0 && (\n                <div className=\"mt-7\">\n                  <p className=\"text-[11px] tracking-[0.22em] uppercase text-mocha mb-3\">Розмір</p>\n                  <div className=\"flex flex-wrap gap-2\">\n                    {uniqueProductSizes(product.sizes).map((s) => (\n                      <button key={s} onClick={() => setSize(s)} className={`px-4 py-2.5 border text-sm transition-all ${size === s ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>\n                    ))}\n                  </div>\n                  {size && <Link to={`/catalog/${product.category}/${sizeToSlug(size)}`} className=\"mt-3 inline-block text-xs text-champagne underline underline-offset-4 hover:text-espresso\">Дивитись усі {CATEGORY_NAMES[product.category]?.toLowerCase() || 'товари'} {size} →</Link>}\n                </div>\n              )}\n"""
+          if old not in s:
+              raise SystemExit('Size block pattern not found')
+          s = s.replace(old, new)
+          p.write_text(s)
+          PY
+      - name: Remove temporary workflow
+        run: rm .github/workflows/fix-product-size-duplicates.yml
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/screens/Product.jsx .github/workflows/fix-product-size-duplicates.yml
+          git commit -m 'fix: deduplicate product size options'
+          git push origin main
