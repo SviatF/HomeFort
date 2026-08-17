@@ -89,7 +89,7 @@ export default function AdminLoginPage() {
         </form>
 
         <p className="text-[11px] leading-relaxed text-[#937C68] mt-6">
-          Сесія зберігається в HttpOnly cookie. Пароль не зберігається у браузері або відкритому вигляді в базі.
+          Тимчасовий файловий режим: обліковий запис зберігається в GitHub лише як scrypt hash. Сесія — Secure HttpOnly cookie на 12 годин; після підключення постійної БД її буде замінено на серверну session storage.
         </p>
       </div>
     </main>
