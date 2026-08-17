@@ -1,0 +1,27 @@
+name: Scrape Approved Beds
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/scrape_homefort_beds_direct.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4 lxml
+      - name: Scrape exact 16 beds and validate galleries
+        run: python scripts/scrape_homefort_beds_direct.py
+      - name: Commit verified catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/homefort-beds.json
+          git commit -m "data: replace beds with verified 16-product catalog" || exit 0
+          git push origin main
