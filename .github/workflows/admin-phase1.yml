@@ -6,6 +6,9 @@ on:
       - 'src/screens/admin/**'
       - 'src/components/admin/**'
       - 'src/lib/admin-product-health.js'
+      - 'src/lib/domeraAdminDb.js'
+      - 'app/admin-login/**'
+      - 'app/api/admin/**'
       - '.github/workflows/admin-phase1.yml'
   workflow_dispatch:
 
