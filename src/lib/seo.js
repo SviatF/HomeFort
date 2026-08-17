@@ -48,6 +48,23 @@ export function breadcrumbSchema(items = []) {
   };
 }
 
+export function faqSchema(items = []) {
+  const valid = items.filter((item) => item?.q && item?.a);
+  if (!valid.length) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: valid.map((item) => ({
+      '@type': 'Question',
+      name: stripText(item.q, 300),
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: stripText(item.a, 2000),
+      },
+    })),
+  };
+}
+
 export function productSchema(p) {
   const availability = p.availability === 'in_stock' ? 'https://schema.org/InStock' : p.availability === 'out_of_stock' ? 'https://schema.org/OutOfStock' : 'https://schema.org/PreOrder';
   const offer = {
