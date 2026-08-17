@@ -5,6 +5,7 @@ import { SlidersHorizontal, ChevronDown, X, Plus, Minus, RotateCcw } from 'lucid
 import { base44 } from '@/api/base44Client';
 import { track, buildItem } from '@/lib/analytics';
 import { sizeToSlug, sizeMatches } from '@/lib/variant';
+import { BED_SEMANTIC_LANDINGS } from '@/lib/bed-semantic-core';
 import Header from '@/components/domera/Header';
 import Footer from '@/components/domera/Footer';
 import ProductCard from '@/components/domera/ProductCard';
@@ -41,7 +42,8 @@ function normalizeSize(value = '') {
 }
 
 export default function Catalog({ initialProducts = null, initialCategory = null } = {}) {
-  const { category, size } = useParams();
+  const { category, size: rawRouteSize } = useParams();
+  const size = rawRouteSize && /^\d{2,3}(?:x|х|×)\d{2,3}$/i.test(String(rawRouteSize)) ? rawRouteSize : '';
   const [all, setAll] = useState(initialProducts || []);
   const [cat, setCat] = useState(initialCategory || null);
   const [loading, setLoading] = useState(!initialProducts);
@@ -313,6 +315,24 @@ export default function Catalog({ initialProducts = null, initialCategory = null
                   {s}
                 </Link>
               ))}
+            </div>
+          )}
+
+          {!size && category === 'beds' && (
+            <div className="mt-5 border-t border-espresso/10 pt-5">
+              <div className="flex items-start gap-4 flex-col lg:flex-row lg:items-center">
+                <span className="text-[10px] tracking-[0.18em] uppercase text-mocha whitespace-nowrap">Популярні категорії</span>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {Object.entries(BED_SEMANTIC_LANDINGS)
+                    .filter(([, item]) => item.priority === 1)
+                    .slice(0, 9)
+                    .map(([slug, item]) => (
+                      <Link key={slug} to={`/catalog/beds/${slug}`} className="text-[12px] text-espresso border-b border-espresso/20 hover:border-espresso transition-colors pb-0.5">
+                        {item.h1}
+                      </Link>
+                    ))}
+                </div>
+              </div>
             </div>
           )}
 
