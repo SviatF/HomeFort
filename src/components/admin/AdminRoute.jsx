@@ -9,17 +9,26 @@ export default function AdminRoute({ children }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    let active = true;
     base44.auth
       .me()
       .then((u) => {
+        if (!active) return;
         if (!u) return setState('needLogin');
-        if (u.role !== 'admin') return setState('denied');
+        setUser(u);
+        if (String(u.role || '').toLowerCase() !== 'admin') return setState('denied');
         if (sessionStorage.getItem('admin_pin_ok') === '1') return setState('ok');
         setState('needPin');
       })
-      .catch(() => setState('needLogin'));
+      .catch((e) => {
+        if (!active) return;
+        console.error('Admin auth check failed', e);
+        setState('needLogin');
+      });
+    return () => { active = false; };
   }, []);
 
   async function submitPin(e) {
@@ -27,15 +36,22 @@ export default function AdminRoute({ children }) {
     setVerifying(true);
     setError('');
     try {
-      const res = await base44.functions.invoke('verifyAdminPin', { pin });
-      if (res.data?.valid) {
+      const res = await base44.functions.invoke('verifyAdminPin', { pin: String(pin).trim() });
+      if (res?.data?.valid) {
         sessionStorage.setItem('admin_pin_ok', '1');
         setState('ok');
       } else {
-        setError('Невірний PIN');
+        setError(res?.data?.error === 'PIN not configured'
+          ? 'ADMIN_PIN не налаштований у Base44 Secrets.'
+          : 'Невірний PIN');
       }
-    } catch {
-      setError('Помилка перевірки. Спробуйте ще раз.');
+    } catch (e) {
+      const status = e?.response?.status;
+      const message = e?.response?.data?.error || e?.response?.data?.message || e?.message || '';
+      if (status === 401) setError('Сесія входу закінчилась. Увійдіть ще раз.');
+      else if (status === 403) setError('Цей Base44-користувач не має ролі admin.');
+      else if (/PIN not configured/i.test(message)) setError('ADMIN_PIN не налаштований у Base44 Secrets.');
+      else setError(message ? `Помилка перевірки: ${message}` : 'Помилка перевірки PIN.');
     }
     setVerifying(false);
   }
@@ -47,20 +63,21 @@ export default function AdminRoute({ children }) {
       </div>
     );
 
-  if (state === 'needLogin') return <Navigate to="/login" replace />;
+  if (state === 'needLogin') return <Navigate to="/login?returnTo=%2Fadmin" replace />;
 
   if (state === 'denied')
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2] px-6">
-        <div className="text-center max-w-md">
+        <div className="text-center max-w-lg">
           <ShieldAlert className="w-12 h-12 mx-auto text-[#8B3A2E] mb-4" strokeWidth={1.2} />
           <h1 className="font-heading text-3xl text-[#342112] mb-3">Доступ заборонено</h1>
-          <p className="text-[#755A44] mb-6">Цей акаунт не має прав адміністратора. Увійдіть під адмін-акаунтом.</p>
+          <p className="text-[#755A44] mb-2">Акаунт авторизований, але Base44 не повернув роль <strong>admin</strong>.</p>
+          {user?.email && <p className="text-xs text-[#937C68] mb-6">Поточний акаунт: {user.email} · роль: {user.role || 'не вказана'}</p>}
           <button
-            onClick={() => base44.auth.logout('/login')}
+            onClick={() => base44.auth.logout('/login?returnTo=%2Fadmin')}
             className="px-6 py-3 bg-[#342112] text-[#FAF7F2] text-[12px] tracking-[0.22em] uppercase"
           >
-            На сторінку входу
+            Увійти іншим акаунтом
           </button>
         </div>
       </div>
@@ -75,7 +92,8 @@ export default function AdminRoute({ children }) {
               <Lock className="w-6 h-6 text-[#FAF7F2]" strokeWidth={1.4} />
             </div>
             <h1 className="font-heading text-3xl text-[#342112] mb-2">Адмін-панель DOMERA</h1>
-            <p className="text-sm text-[#755A44]">Введіть другий фактор — PIN-код доступу</p>
+            <p className="text-sm text-[#755A44]">Введіть PIN-код доступу</p>
+            {user?.email && <p className="text-xs text-[#937C68] mt-2">{user.email}</p>}
           </div>
           <input
             type="password"
@@ -84,15 +102,23 @@ export default function AdminRoute({ children }) {
             placeholder="PIN"
             autoFocus
             inputMode="numeric"
+            autoComplete="one-time-code"
             className="w-full text-center tracking-[0.4em] bg-transparent border-b border-[#342112]/30 py-3 text-2xl text-[#342112] focus:border-[#342112] outline-none"
           />
-          {error && <p className="text-sm text-[#8B3A2E] text-center mt-3">{error}</p>}
+          {error && <p className="text-sm text-[#8B3A2E] text-center mt-4 leading-relaxed">{error}</p>}
           <button
             type="submit"
-            disabled={verifying || !pin}
+            disabled={verifying || !pin.trim()}
             className="w-full mt-8 py-3.5 bg-[#342112] text-[#FAF7F2] text-[12px] tracking-[0.22em] uppercase disabled:opacity-50"
           >
             {verifying ? 'Перевірка…' : 'Увійти'}
+          </button>
+          <button
+            type="button"
+            onClick={() => base44.auth.logout('/login?returnTo=%2Fadmin')}
+            className="w-full mt-3 py-3 text-[11px] tracking-[0.16em] uppercase text-[#755A44]"
+          >
+            Змінити акаунт
           </button>
         </form>
       </div>
