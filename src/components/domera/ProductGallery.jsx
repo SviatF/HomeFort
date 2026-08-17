@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Image } from '@/components/ui/image';
+import { track } from '@/lib/analytics';
 
 export default function ProductGallery({ images = [], videoUrl, salePercent, name }) {
   const slides = [
@@ -20,6 +21,11 @@ export default function ProductGallery({ images = [], videoUrl, salePercent, nam
     setPos({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
   };
 
+  const selectSlide = (index, slide) => {
+    setActive(index);
+    track('gallery_interaction', { product_name: name, slide_index: index + 1, media_type: slide.type });
+  };
+
   return (
     <div>
       <div
@@ -29,7 +35,7 @@ export default function ProductGallery({ images = [], videoUrl, salePercent, nam
         onMouseMove={onMove}
       >
         {current.type === 'video' ? (
-          <video src={current.url} controls className="w-full h-full object-cover" />
+          <video src={current.url} controls className="w-full h-full object-cover" onPlay={() => track('gallery_interaction', { product_name: name, slide_index: active + 1, media_type: 'video', action: 'play' })} />
         ) : (
           <Image
             src={current.url}
@@ -45,7 +51,7 @@ export default function ProductGallery({ images = [], videoUrl, salePercent, nam
       {slides.length > 1 && (
         <div className="mt-4 flex gap-3 overflow-x-auto scrollbar-hide">
           {slides.map((s, i) => (
-            <button key={i} onClick={() => setActive(i)} className={`w-20 h-24 flex-shrink-0 overflow-hidden border-2 transition-colors ${i === active ? 'border-espresso' : 'border-transparent opacity-70 hover:opacity-100'}`}>
+            <button key={i} onClick={() => selectSlide(i, s)} className={`w-20 h-24 flex-shrink-0 overflow-hidden border-2 transition-colors ${i === active ? 'border-espresso' : 'border-transparent opacity-70 hover:opacity-100'}`}>
               {s.type === 'video' ? (
                 <div className="w-full h-full bg-espresso flex items-center justify-center text-milk text-[9px] tracking-[0.2em] uppercase">Відео</div>
               ) : (
