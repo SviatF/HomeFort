@@ -25,14 +25,15 @@ export function getHomefortBedBySlug(slug) {
   return getHomefortBeds().find((product) => product.slug === slug) || null;
 }
 
-// Base44 is the editable source of truth. Static scraped records only fill gaps.
+// For beds, the approved static catalog defines the allow-list. Base44 may override
+// fields for those exact slugs, but stale/incorrect bed records are never exposed.
 export function mergeEditableProducts(staticProducts = [], editableProducts = []) {
   const bySlug = new Map();
   for (const item of staticProducts || []) {
     if (item?.slug) bySlug.set(item.slug, item);
   }
   for (const item of editableProducts || []) {
-    if (!item?.slug) continue;
+    if (!item?.slug || !bySlug.has(item.slug)) continue;
     const fallback = bySlug.get(item.slug) || {};
     bySlug.set(item.slug, { ...fallback, ...item });
   }
