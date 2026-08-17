@@ -7,6 +7,13 @@ async function getProductData(slug) {
   const products = await filterEntity('Product', { slug });
   const editableProduct = products[0] || null;
   const staticProduct = getHomefortBedBySlug(slug);
+
+  // Old/incorrect Base44 bed records are intentionally hidden unless their slug is
+  // present in the explicitly approved 16-product Homefort catalog.
+  if (editableProduct?.category === 'beds' && !staticProduct) {
+    return { product: null, related: [], mattresses: [], crossSell: [] };
+  }
+
   const product = editableProduct ? { ...(staticProduct || {}), ...editableProduct } : staticProduct;
   if (!product) return { product: null, related: [], mattresses: [], crossSell: [] };
 
