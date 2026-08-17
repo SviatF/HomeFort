@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from '@/lib/router';
-import { SlidersHorizontal, ChevronDown, X, Plus, Minus } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, X, Plus, Minus, RotateCcw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { track, buildItem } from '@/lib/analytics';
 import { sizeToSlug, sizeMatches } from '@/lib/variant';
@@ -25,10 +25,20 @@ const fallbackTitles = {
 const sortOptions = [
   { value: 'featured', label: 'Рекомендовані' },
   { value: 'new', label: 'Новинки' },
-  { value: 'price-asc', label: 'Ціна ↑' },
-  { value: 'price-desc', label: 'Ціна ↓' },
-  { value: 'rating', label: 'Рейтинг' },
+  { value: 'price-asc', label: 'Від дешевших' },
+  { value: 'price-desc', label: 'Від дорожчих' },
+  { value: 'rating', label: 'За рейтингом' },
 ];
+
+function normalizeSize(value = '') {
+  const match = String(value)
+    .toLowerCase()
+    .replace(/см/g, '')
+    .replace(/[xх×]/g, '×')
+    .replace(/\s+/g, '')
+    .match(/(\d{2,3})×(\d{2,3})/);
+  return match ? `${match[1]}×${match[2]}` : String(value).trim();
+}
 
 export default function Catalog({ initialProducts = null, initialCategory = null } = {}) {
   const { category, size } = useParams();
@@ -68,17 +78,14 @@ export default function Catalog({ initialProducts = null, initialCategory = null
     setColorsSel([]); setFabricsSel([]); setLiftingSel('any');
   }, [category, initialProducts, initialCategory]);
 
-  useEffect(() => {
-    if (!loading && all.length) {
-      track('view_item_list', {
-        item_list_id: size ? `${category}-${sizeToSlug(size)}` : category,
-        item_list_name: meta.title,
-        items: filtered.map((p) => buildItem(p)),
-      });
-    }
-  }, [loading, category, size]);
-
-  const allSizes = useMemo(() => [...new Set(all.flatMap((p) => p.sizes || []))], [all]);
+  const allSizes = useMemo(() => {
+    const values = all.flatMap((p) => (p.sizes || []).map(normalizeSize)).filter(Boolean);
+    return [...new Set(values)].sort((a, b) => {
+      const [aw = 0, al = 0] = a.split('×').map(Number);
+      const [bw = 0, bl = 0] = b.split('×').map(Number);
+      return aw - bw || al - bl;
+    });
+  }, [all]);
   const allMaterials = useMemo(() => [...new Set(all.map((p) => p.material).filter(Boolean))], [all]);
   const allColors = useMemo(() => [...new Set(all.flatMap((p) => p.colors || []))], [all]);
   const allFabrics = useMemo(() => [...new Set(all.flatMap((p) => p.fabrics || []))], [all]);
@@ -89,13 +96,15 @@ export default function Catalog({ initialProducts = null, initialCategory = null
     if (!size) return '';
     const p = all.find((pp) => (pp.sizes || []).some((s) => sizeMatches(s, size)));
     const s = p?.sizes?.find((x) => sizeMatches(x, size));
-    return s || size;
+    return normalizeSize(s || size);
   }, [all, size]);
 
   const filtered = useMemo(() => {
     let list = size ? all.filter((p) => (p.sizes || []).some((s) => sizeMatches(s, size))) : all;
     list = list.filter((p) => p.price <= priceMax);
-    if (sizesSel.length) list = list.filter((p) => (p.sizes || []).some((s) => sizesSel.includes(s)));
+    if (sizesSel.length) {
+      list = list.filter((p) => (p.sizes || []).some((s) => sizesSel.includes(normalizeSize(s))));
+    }
     if (materialsSel.length) list = list.filter((p) => materialsSel.includes(p.material));
     if (colorsSel.length) list = list.filter((p) => (p.colors || []).some((c) => colorsSel.includes(c)));
     if (fabricsSel.length) list = list.filter((p) => (p.fabrics || []).some((f) => fabricsSel.includes(f)));
@@ -130,6 +139,16 @@ export default function Catalog({ initialProducts = null, initialCategory = null
         canonical: cat?.canonicalUrl || `/catalog/${category}`,
       };
 
+  useEffect(() => {
+    if (!loading && all.length) {
+      track('view_item_list', {
+        item_list_id: size ? `${category}-${sizeToSlug(size)}` : category,
+        item_list_name: meta.title,
+        items: filtered.map((p) => buildItem(p)),
+      });
+    }
+  }, [loading, category, size]);
+
   const breadcrumbLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -158,44 +177,55 @@ export default function Catalog({ initialProducts = null, initialCategory = null
     },
   };
   const faqList = (cat?.faq || []).filter((f) => f && f.q);
-  const faqLd = faqList.length
-    ? {
-        '@context': 'https://schema.org',
-        '@type': 'FAQPage',
-        mainEntity: faqList.map((f) => ({
-          '@type': 'Question',
-          name: f.q,
-          acceptedAnswer: { '@type': 'Answer', text: f.a || '' },
-        })),
-      }
-    : null;
+  const faqLd = faqList.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqList.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a || '' },
+    })),
+  } : null;
 
   const jsonLd = [breadcrumbLd, collectionLd, ...(faqLd ? [faqLd] : [])];
   const indexable = cat ? cat.indexable !== false : true;
-
-  const toggle = (arr, set, v) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  const toggle = (arr, set, value) => set(arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value]);
+  const hasActiveFilters = priceMax < maxPrice || sizesSel.length || materialsSel.length || colorsSel.length || fabricsSel.length || liftingSel !== 'any' || onlyStock;
+  const resetFilters = () => {
+    setPriceMax(maxPrice);
+    setSizesSel([]);
+    setMaterialsSel([]);
+    setColorsSel([]);
+    setFabricsSel([]);
+    setLiftingSel('any');
+    setOnlyStock(false);
+  };
 
   const Filters = () => (
     <div className="space-y-8">
       <div>
-        <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-4">Ціна до</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] tracking-[0.22em] uppercase text-mocha">Бюджет до</p>
+          <span className="font-heading text-lg text-espresso">{priceMax.toLocaleString('uk-UA')} ₴</span>
+        </div>
         <input type="range" min="1000" max={maxPrice} step="500" value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} className="w-full accent-espresso" />
-        <p className="text-sm text-espresso mt-2">{priceMax.toLocaleString('uk-UA')} ₴</p>
       </div>
+
       {!size && allSizes.length > 0 && (
         <div>
-          <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-4">Розмір</p>
+          <p className="text-[10px] tracking-[0.22em] uppercase text-mocha mb-4">Спальне місце</p>
           <div className="flex flex-wrap gap-2">
             {allSizes.map((s) => (
-              <button key={s} onClick={() => toggle(sizesSel, setSizesSel, s)} className={`px-3 py-2 border text-sm transition-all ${sizesSel.includes(s) ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>
+              <button key={s} onClick={() => toggle(sizesSel, setSizesSel, s)} className={`px-3 py-2 border text-[12px] transition-all ${sizesSel.includes(s) ? 'border-espresso bg-espresso text-milk' : 'border-espresso/15 text-espresso hover:border-espresso/50'}`}>{s}</button>
             ))}
           </div>
         </div>
       )}
+
       {allMaterials.length > 0 && (
         <div>
-          <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-4">Матеріал</p>
-          <div className="space-y-2">
+          <p className="text-[10px] tracking-[0.22em] uppercase text-mocha mb-4">Матеріал</p>
+          <div className="space-y-2.5">
             {allMaterials.map((m) => (
               <label key={m} className="flex items-center gap-3 cursor-pointer text-sm text-espresso">
                 <input type="checkbox" checked={materialsSel.includes(m)} onChange={() => toggle(materialsSel, setMaterialsSel, m)} className="accent-espresso w-4 h-4" />
@@ -205,123 +235,128 @@ export default function Catalog({ initialProducts = null, initialCategory = null
           </div>
         </div>
       )}
+
       {allColors.length > 0 && (
         <div>
-          <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-4">Колір</p>
+          <p className="text-[10px] tracking-[0.22em] uppercase text-mocha mb-4">Колір</p>
           <div className="flex flex-wrap gap-2">
-            {allColors.map((c) => (
-              <button key={c} onClick={() => toggle(colorsSel, setColorsSel, c)} aria-label={c} className={`w-8 h-8 rounded-full border-2 transition-all ${colorsSel.includes(c) ? 'border-espresso scale-110' : 'border-espresso/15'}`} style={{ background: c }} />
-            ))}
+            {allColors.map((c) => <button key={c} onClick={() => toggle(colorsSel, setColorsSel, c)} aria-label={c} className={`w-8 h-8 rounded-full border-2 transition-all ${colorsSel.includes(c) ? 'border-espresso scale-110' : 'border-espresso/15'}`} style={{ background: c }} />)}
           </div>
         </div>
       )}
+
       {allFabrics.length > 0 && (
         <div>
-          <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-4">Тканина</p>
+          <p className="text-[10px] tracking-[0.22em] uppercase text-mocha mb-4">Тканина</p>
           <div className="flex flex-wrap gap-2">
-            {allFabrics.map((f) => (
-              <button key={f} onClick={() => toggle(fabricsSel, setFabricsSel, f)} className={`px-3 py-2 border text-sm transition-all ${fabricsSel.includes(f) ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{f}</button>
-            ))}
+            {allFabrics.map((f) => <button key={f} onClick={() => toggle(fabricsSel, setFabricsSel, f)} className={`px-3 py-2 border text-sm transition-all ${fabricsSel.includes(f) ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{f}</button>)}
           </div>
         </div>
       )}
+
       {hasLifting && (
         <div>
-          <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-4">Підйомний механізм</p>
-          <div className="flex gap-2">
-            {[{ v: 'any', l: 'Усі' }, { v: 'yes', l: 'З механізмом' }, { v: 'no', l: 'Без механізму' }].map((o) => (
-              <button key={o.v} onClick={() => setLiftingSel(o.v)} className={`px-3 py-2 border text-sm transition-all ${liftingSel === o.v ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{o.l}</button>
+          <p className="text-[10px] tracking-[0.22em] uppercase text-mocha mb-4">Підйомний механізм</p>
+          <div className="flex flex-wrap gap-2">
+            {[{ v: 'any', l: 'Усі' }, { v: 'yes', l: 'Є' }, { v: 'no', l: 'Без' }].map((o) => (
+              <button key={o.v} onClick={() => setLiftingSel(o.v)} className={`px-3 py-2 border text-[12px] transition-all ${liftingSel === o.v ? 'border-espresso bg-espresso text-milk' : 'border-espresso/15 text-espresso hover:border-espresso/50'}`}>{o.l}</button>
             ))}
           </div>
         </div>
       )}
+
       <label className="flex items-center gap-3 cursor-pointer text-sm text-espresso">
         <input type="checkbox" checked={onlyStock} onChange={(e) => setOnlyStock(e.target.checked)} className="accent-espresso w-4 h-4" />
         Тільки в наявності
       </label>
+
+      {hasActiveFilters && (
+        <button onClick={resetFilters} className="inline-flex items-center gap-2 text-[10px] tracking-[0.16em] uppercase text-mocha hover:text-espresso transition-colors">
+          <RotateCcw className="w-3.5 h-3.5" strokeWidth={1.4} /> Скинути фільтри
+        </button>
+      )}
     </div>
   );
 
   return (
     <div className="bg-milk min-h-screen">
-      <Seo
-        title={meta.title}
-        description={meta.description}
-        canonical={meta.canonical}
-        image={cat?.ogImage || cat?.image}
-        jsonLd={jsonLd}
-        noindex={!indexable}
-      />
+      <Seo title={meta.title} description={meta.description} canonical={meta.canonical} image={cat?.ogImage || cat?.image} jsonLd={jsonLd} noindex={!indexable} />
       <Header />
       <main className="pt-[78px]">
-        <div className="mx-auto max-w-[1440px] px-6 lg:px-12 py-12 md:py-20">
-          <nav className="text-xs text-mocha mb-6 flex gap-2 flex-wrap">
+        <div className="mx-auto max-w-[1440px] px-5 sm:px-6 lg:px-12 py-10 md:py-16">
+          <nav className="text-[11px] text-mocha mb-8 flex gap-2 flex-wrap tracking-[0.04em]">
             <Link to="/" className="hover:text-espresso">Головна</Link>
             <span>/</span>
-            {size ? (
-              <>
-                <Link to={`/catalog/${category}`} className="hover:text-espresso">{baseMeta.title}</Link>
-                <span>/</span>
-                <span className="text-espresso">{sizeDisplay}</span>
-              </>
-            ) : (
-              <span className="text-espresso">{baseMeta.title}</span>
-            )}
+            {size ? <><Link to={`/catalog/${category}`} className="hover:text-espresso">{baseMeta.title}</Link><span>/</span><span className="text-espresso">{sizeDisplay}</span></> : <span className="text-espresso">{baseMeta.title}</span>}
           </nav>
 
           <Reveal>
-            <h1 className="font-heading text-[clamp(2.2rem,5vw,4rem)] leading-[1.05] text-espresso">{meta.h1}</h1>
-            <p className="mt-4 max-w-2xl text-mocha text-lg leading-relaxed">{meta.description}</p>
-            <p className="mt-3 text-sm text-mocha">{filtered.length} товарів</p>
+            <div className="grid lg:grid-cols-[1fr_0.75fr] gap-8 lg:gap-16 items-end border-b border-espresso/10 pb-10 md:pb-14">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-mocha mb-4">DOMERA COLLECTION</p>
+                <h1 className="font-heading text-[clamp(3rem,6vw,5.4rem)] leading-[0.96] tracking-[-0.025em] text-espresso">{meta.h1}</h1>
+              </div>
+              <div className="lg:pb-1">
+                <p className="max-w-xl text-mocha text-base md:text-lg leading-relaxed">{meta.description}</p>
+                <div className="mt-5 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-mocha">
+                  <span className="text-espresso font-semibold">{filtered.length}</span><span>моделей у колекції</span>
+                </div>
+              </div>
+            </div>
           </Reveal>
 
-          {/* Size landing chips (internal linking) */}
           {!size && allSizes.length > 1 && (
-            <div className="mt-8 flex flex-wrap gap-2">
-              {allSizes.map((s) => (
-                <Link key={s} to={`/catalog/${category}/${sizeToSlug(s)}`} className="px-4 py-2 border border-espresso/20 text-sm text-espresso hover:border-espresso hover:bg-espresso hover:text-milk transition-all">
-                  {baseMeta.title} {s}
+            <div className="mt-7 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              <span className="text-[10px] tracking-[0.18em] uppercase text-mocha whitespace-nowrap mr-2">Популярні розміри</span>
+              {allSizes.slice(0, 8).map((s) => (
+                <Link key={s} to={`/catalog/${category}/${sizeToSlug(s)}`} className="whitespace-nowrap px-3.5 py-2 border border-espresso/15 text-[11px] text-espresso hover:border-espresso hover:bg-espresso hover:text-milk transition-all">
+                  {s}
                 </Link>
               ))}
             </div>
           )}
 
-          <div className="mt-10 flex items-center justify-between gap-4 border-y border-espresso/10 py-4">
-            <button onClick={() => setMobileFilters(true)} className="lg:hidden inline-flex items-center gap-2 text-sm text-espresso">
-              <SlidersHorizontal className="w-4 h-4" strokeWidth={1.4} /> Фільтри
+          <div className="mt-7 flex items-center justify-between gap-4 border-y border-espresso/10 py-3.5">
+            <button onClick={() => setMobileFilters(true)} className="inline-flex items-center gap-2 text-[11px] tracking-[0.12em] uppercase text-espresso">
+              <SlidersHorizontal className="w-4 h-4" strokeWidth={1.35} /> Фільтри
+              {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-clay" />}
             </button>
-            <div className="hidden lg:block" />
-            <div className="relative">
-              <select value={sort} onChange={(e) => setSort(e.target.value)} className="appearance-none bg-transparent border border-espresso/20 pl-4 pr-10 py-2.5 text-sm text-espresso cursor-pointer focus:outline-none focus:border-espresso">
-                {sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-mocha pointer-events-none" />
+            <div className="flex items-center gap-4">
+              <span className="hidden sm:inline text-[11px] text-mocha">{filtered.length} товарів</span>
+              <div className="relative">
+                <select value={sort} onChange={(e) => setSort(e.target.value)} className="appearance-none bg-transparent pr-7 py-1.5 text-[11px] uppercase tracking-[0.1em] text-espresso cursor-pointer focus:outline-none">
+                  {sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-0 top-1/2 -translate-y-1/2 text-mocha pointer-events-none" />
+              </div>
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
-            <aside className="hidden lg:block lg:col-span-3">
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr] gap-10 xl:gap-14 items-start">
+            <aside className="hidden lg:block sticky top-[104px] pr-2">
               <Filters />
             </aside>
-            <div className="lg:col-span-9">
+            <div>
               {loading ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-5 md:gap-x-7 gap-y-12 md:gap-y-16">
                   {[...Array(6)].map((_, i) => <div key={i} className="aspect-[4/5] bg-sand animate-pulse" />)}
                 </div>
               ) : filtered.length === 0 ? (
-                <p className="text-mocha py-20 text-center">За обраними фільтрами товарів не знайдено.</p>
+                <div className="py-24 text-center border-y border-espresso/10">
+                  <p className="font-heading text-3xl text-espresso">Нічого не знайдено</p>
+                  <p className="mt-2 text-sm text-mocha">Спробуйте змінити параметри вибору.</p>
+                  <button onClick={resetFilters} className="mt-6 text-[10px] uppercase tracking-[0.16em] border-b border-espresso/40 pb-1 text-espresso">Скинути фільтри</button>
+                </div>
               ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {filtered.map((p) => <ProductCard key={p.id} product={p} />)}
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-5 md:gap-x-7 gap-y-12 md:gap-y-16">
+                  {filtered.map((p) => <ProductCard key={p.id || p.slug} product={p} />)}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Category guide & internal linking */}
           <CategoryGuide category={category} cat={cat} size={size} sizeDisplay={sizeDisplay} allSizes={allSizes} />
 
-          {/* FAQ */}
           {faqList.length > 0 && (
             <div className="mt-20 md:mt-28 max-w-3xl">
               <h2 className="font-heading text-3xl text-espresso mb-8">Поширені запитання</h2>
@@ -342,16 +377,15 @@ export default function Catalog({ initialProducts = null, initialCategory = null
       </main>
       <Footer />
 
-      {/* Mobile filters */}
-      <div className={`fixed inset-0 z-[70] lg:hidden transition-all duration-300 ${mobileFilters ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-        <div className="absolute inset-0 bg-espresso/40" onClick={() => setMobileFilters(false)} />
-        <div className={`absolute bottom-0 left-0 right-0 max-h-[85vh] bg-milk rounded-t-2xl p-6 overflow-y-auto transition-transform duration-300 ${mobileFilters ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="flex items-center justify-between mb-6">
-            <span className="font-heading text-2xl text-espresso">Фільтри</span>
+      <div className={`fixed inset-0 z-[70] transition-all duration-300 ${mobileFilters ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+        <div className="absolute inset-0 bg-espresso/45 backdrop-blur-[2px]" onClick={() => setMobileFilters(false)} />
+        <div className={`absolute bottom-0 left-0 right-0 lg:left-auto lg:top-0 lg:w-[420px] max-h-[88vh] lg:max-h-none lg:h-full bg-milk rounded-t-2xl lg:rounded-none p-6 md:p-8 overflow-y-auto transition-transform duration-300 ${mobileFilters ? 'translate-y-0 lg:translate-x-0' : 'translate-y-full lg:translate-y-0 lg:translate-x-full'}`}>
+          <div className="flex items-center justify-between mb-8 pb-5 border-b border-espresso/10">
+            <div><span className="font-heading text-3xl text-espresso">Фільтри</span><p className="mt-1 text-xs text-mocha">Знайдіть модель під вашу спальню</p></div>
             <button onClick={() => setMobileFilters(false)}><X className="w-6 h-6 text-espresso" strokeWidth={1.4} /></button>
           </div>
           <Filters />
-          <button onClick={() => setMobileFilters(false)} className="mt-8 w-full py-4 bg-espresso text-milk text-[12px] tracking-[0.22em] uppercase">Показати {filtered.length}</button>
+          <button onClick={() => setMobileFilters(false)} className="mt-8 w-full py-4 bg-espresso text-milk text-[11px] tracking-[0.18em] uppercase">Показати {filtered.length} моделей</button>
         </div>
       </div>
     </div>
