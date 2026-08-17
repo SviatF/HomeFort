@@ -1,6 +1,7 @@
 import { filterEntity } from '@/lib/base44-server';
 import { getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
 import { BED_SEMANTIC_LANDINGS } from '@/lib/bed-semantic-core';
+import { mergeJournalPosts } from '@/lib/bed-topical-core';
 
 function sizeSlug(value = '') {
   const match = String(value).toLowerCase().replace(/см/g, '').match(/(\d{2,3})\s*[×хx]\s*(\d{2,3})/);
@@ -14,7 +15,7 @@ export default async function sitemap() {
     ['/', 1, 'weekly'],
     ['/bed-finder', 0.8, 'monthly'],
     ['/quiz', 0.7, 'monthly'],
-    ['/journal', 0.8, 'weekly'],
+    ['/journal', 0.85, 'weekly'],
     ['/partners', 0.5, 'monthly'],
     ['/delivery-payment', 0.5, 'monthly'],
   ].map(([path, priority, changeFrequency]) => ({ url: `${base}${path}`, lastModified: now, priority, changeFrequency }));
@@ -29,7 +30,7 @@ export default async function sitemap() {
     changeFrequency: 'weekly',
   }));
 
-  const [editableProducts, posts] = await Promise.all([
+  const [editableProducts, dynamicPosts] = await Promise.all([
     filterEntity('Product', {}),
     filterEntity('Blog', { published: true }),
   ]);
@@ -37,6 +38,7 @@ export default async function sitemap() {
   const otherProducts = editableProducts.filter((p) => p.category !== 'beds');
   const beds = mergeEditableProducts(getHomefortBeds(), editableBeds);
   const products = [...beds, ...otherProducts].filter((p) => p.slug && p.indexable !== false);
+  const posts = mergeJournalPosts(dynamicPosts);
 
   const sizeSlugs = [...new Set(beds.flatMap((p) => (p.sizes || []).map(sizeSlug)).filter(Boolean))];
   const sizeRoutes = sizeSlugs.map((size) => ({
@@ -57,7 +59,7 @@ export default async function sitemap() {
   const postRoutes = posts.filter((p) => p.slug).map((p) => ({
     url: `${base}/journal/${p.slug}`,
     lastModified: new Date(p.updated_date || p.publishedAt || now),
-    priority: 0.7,
+    priority: (p.id || '').startsWith('seo-') ? 0.78 : 0.7,
     changeFrequency: 'monthly',
     images: p.coverImage ? [p.coverImage] : undefined,
   }));
