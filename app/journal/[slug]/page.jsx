@@ -2,15 +2,23 @@ import { notFound } from 'next/navigation';
 import JournalArticle from '@/screens/JournalArticle';
 import { filterEntity, listEntity } from '@/lib/base44-server';
 import { buildMetadata, breadcrumbSchema, absoluteUrl, stripText } from '@/lib/seo';
+import { getTopicalArticle } from '@/lib/bed-topical-core';
+import { getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
 
 async function getData(slug) {
   const posts = await filterEntity('Blog', { slug, published: true });
-  const post = posts[0] || null;
+  const staticPost = getTopicalArticle(slug);
+  const post = posts[0] ? { ...(staticPost || {}), ...posts[0] } : staticPost;
   if (!post) return { post: null, related: [] };
+
   let related = [];
-  if (post.relatedProductIds?.length) {
-    const all = await listEntity('Product', '-updated_date', 100);
-    related = all.filter((p) => post.relatedProductIds.includes(p.id)).slice(0, 3);
+  if (post.relatedProductIds?.length || post.relatedProductSlugs?.length) {
+    const editable = await listEntity('Product', '-updated_date', 100);
+    const beds = mergeEditableProducts(getHomefortBeds(), editable.filter((p) => p.category === 'beds'));
+    const all = [...beds, ...editable.filter((p) => p.category !== 'beds')];
+    related = all.filter((p) =>
+      (post.relatedProductIds || []).includes(p.id) || (post.relatedProductSlugs || []).includes(p.slug)
+    ).slice(0, 3);
   }
   return { post, related };
 }
@@ -25,7 +33,7 @@ export async function generateMetadata({ params }) {
     canonical: `/journal/${post.slug}`,
     image: post.coverImage,
     type: 'article',
-    keywords: post.tags || [],
+    keywords: post.keywords || post.tags || [],
   });
 }
 
@@ -45,6 +53,8 @@ export default async function Page({ params }) {
     datePublished: p.publishedAt || undefined,
     dateModified: p.updated_date || p.publishedAt || undefined,
     inLanguage: 'uk-UA',
+    keywords: (p.keywords || p.tags || []).join(', ') || undefined,
+    articleSection: p.tag || 'Ліжка',
     author: { '@type': 'Organization', name: p.author || 'DOMERA', url: absoluteUrl('/') },
     publisher: { '@type': 'Organization', name: 'DOMERA', url: absoluteUrl('/') },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
