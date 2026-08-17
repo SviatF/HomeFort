@@ -1,16 +1,18 @@
 import Journal from '@/screens/Journal';
 import { filterEntity } from '@/lib/base44-server';
 import { buildMetadata, breadcrumbSchema, absoluteUrl } from '@/lib/seo';
+import { mergeJournalPosts } from '@/lib/bed-topical-core';
 
 export const metadata = buildMetadata({
   title: 'Журнал DOMERA — про сон, ліжка та інтер’єр',
-  description: 'Практичні матеріали DOMERA про вибір ліжка й матраца, текстиль, догляд за спальнею та комфортний сон.',
+  description: 'Практичні матеріали DOMERA про вибір ліжка й матраца, розміри 140×200, 160×200 і 180×200, підйомні механізми, тканини та комфорт спальні.',
   canonical: '/journal',
-  keywords: ['журнал про сон', 'як вибрати ліжко', 'як вибрати матрац', 'DOMERA Journal'],
+  keywords: ['як вибрати ліжко', 'розміри ліжка', 'ліжко 160 чи 180', 'ліжко з підйомним механізмом', 'як вибрати матрац', 'DOMERA Journal'],
 });
 
 export default async function Page() {
-  const posts = (await filterEntity('Blog', { published: true })).sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+  const dynamicPosts = await filterEntity('Blog', { published: true });
+  const posts = mergeJournalPosts(dynamicPosts);
   const schemas = [
     {
       '@context': 'https://schema.org',
@@ -18,6 +20,7 @@ export default async function Page() {
       '@id': `${absoluteUrl('/journal')}#collection`,
       name: 'Журнал DOMERA',
       url: absoluteUrl('/journal'),
+      about: ['ліжка', 'матраци', 'сон', 'ергономіка спальні', 'інтер’єр'],
       mainEntity: {
         '@type': 'ItemList',
         numberOfItems: posts.length,
