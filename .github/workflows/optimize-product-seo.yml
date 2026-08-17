@@ -1,0 +1,65 @@
+name: Optimize Product SEO
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/optimize-product-seo.py'
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Optimize product SEO
+        run: python scripts/optimize-product-seo.py
+
+      - name: Validate SEO fields
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('public/data/homefort-beds.json').read_text())
+          products = data.get('products', [])
+          assert len(products) == 16, f'Expected 16 products, got {len(products)}'
+          titles = set()
+          descriptions = set()
+          for p in products:
+              title = p.get('seoTitle','')
+              desc = p.get('seoDescription','')
+              assert 35 <= len(title) <= 65, (p.get('name'), len(title), title)
+              assert 110 <= len(desc) <= 165, (p.get('name'), len(desc), desc)
+              assert p.get('seoH1'), p.get('name')
+              assert p.get('canonicalUrl','').startswith('https://domera.shop/product/'), p.get('name')
+              assert p.get('imageAlt'), p.get('name')
+              assert p.get('indexable') is True, p.get('name')
+              assert title not in titles, f'Duplicate title: {title}'
+              assert desc not in descriptions, f'Duplicate description: {desc}'
+              titles.add(title)
+              descriptions.add(desc)
+          print('Validated', len(products), 'products')
+          PY
+
+      - name: Commit optimized SEO
+        run: |
+          if git diff --quiet; then
+            echo 'No SEO changes required.'
+            exit 0
+          fi
+          git config user.name 'DOMERA SEO Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add public/data/homefort-beds.json
+          git commit -m 'seo: optimize all product metadata'
+          git push
