@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "users": [
+    {
+      "id": "master-admin",
+      "email": "admin@domera.shop",
+      "name": "DOMERA Master Admin",
+      "role": "SUPER_ADMIN",
+      "active": true,
+      "password": {
+        "algorithm": "scrypt",
+        "salt": "vFh17YlOKRW5HZDD/JW85w==",
+        "hash": "XixjJ12PDKCsQYOsxC84p6JLCX7yxPTGv4onQ4qKMXs8tnD4yTatz6u/IPW9kxndyJioCMoZ2IVNgj5rbYx6PA==",
+        "keyLength": 64
+      }
+    }
+  ]
+}
