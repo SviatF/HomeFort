@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { Loader2, LockKeyhole } from 'lucide-react';
 
 function safeReturnTo(value) {
@@ -11,7 +10,6 @@ function safeReturnTo(value) {
 }
 
 export default function AdminLoginPage() {
-  const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +27,7 @@ export default function AdminLoginPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.ok) throw new Error(data?.error || 'Не вдалося увійти.');
+      const params = new URLSearchParams(window.location.search);
       window.location.href = safeReturnTo(params.get('returnTo'));
     } catch (err) {
       setError(err?.message || 'Не вдалося увійти.');
