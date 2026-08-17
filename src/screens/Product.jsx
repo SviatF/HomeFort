@@ -19,6 +19,7 @@ import { Image } from '@/components/ui/image';
 import { ProductBenefits, PriceValueBlock, DeliveryPromise, PurchaseSummary, InteriorGallery, ReviewSummary, CompareModels, StickyBuyBar, FloatingConsultation, ReassuranceRow } from '@/components/domera/ProductConversionSections';
 import { DeliveryEstimator, ShareConfiguration, RecentlyViewedRail } from '@/components/domera/CROPhase2Sections';
 import { useRecentlyViewed } from '@/lib/RecentlyViewedContext';
+import { formatProductDescription } from '@/lib/product-description';
 
 const CATEGORY_NAMES = {
   beds: 'Ліжка',
@@ -384,8 +385,16 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                 <button key={t.id} onClick={() => setTab(t.id)} className={`text-[12px] tracking-[0.18em] uppercase pb-2 border-b-2 transition-colors ${tab === t.id ? 'border-espresso text-espresso' : 'border-transparent text-mocha hover:text-espresso'}`}>{t.label}</button>
               ))}
             </div>
-            <div className="max-w-3xl text-mocha leading-relaxed">
-              {tab === 'about' && <p>{product.fullDescription}</p>}
+            <div className="max-w-4xl">
+              {tab === 'about' && (
+                <div className="max-w-[780px] space-y-5">
+                  {formatProductDescription(product.fullDescription || product.shortDescription).map((paragraph, index) => (
+                    <p key={index} className={`text-mocha leading-[1.85] ${index === 0 ? 'text-[18px] md:text-[20px] text-espresso' : 'text-[15px] md:text-[16px]'}`}>
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              )}
               {tab === 'specs' && (
                 <div className="space-y-8">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-3">
