@@ -16,6 +16,7 @@ import { useWishlist } from '@/lib/WishlistContext';
 import Seo from '@/components/Seo';
 import LeadModal from '@/components/domera/LeadModal';
 import { Image } from '@/components/ui/image';
+import { ProductBenefits, PriceValueBlock, DeliveryPromise, PurchaseSummary, InteriorGallery, ReviewSummary, CompareModels, StickyBuyBar, FloatingConsultation, ReassuranceRow } from '@/components/domera/ProductConversionSections';
 
 const CATEGORY_NAMES = {
   beds: 'Ліжка',
@@ -261,6 +262,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                 {product.oldPrice > 0 && <span className="text-lg text-mocha line-through">{product.oldPrice.toLocaleString('uk-UA')} ₴</span>}
               </div>
               <p className="text-sm text-mocha mt-2">або від {Math.round(livePrice / 6).toLocaleString('uk-UA')} ₴/міс без переплат</p>
+              <PriceValueBlock price={livePrice} oldPrice={product.oldPrice} salePercent={product.salePercent} />
               {(isBed && lifting) || mattress ? (
                 <div className="mt-2 text-xs text-mocha space-y-0.5">
                   {isBed && lifting && <p>· підйомний механізм +{LIFTING_SURCHARGE.toLocaleString('uk-UA')} ₴</p>}
@@ -273,15 +275,16 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                 <span className="text-espresso">{product.availability === 'in_stock' ? 'В наявності' : `Виготовлення: ${product.productionTime}`}</span>
               </div>
 
-              <p className="mt-6 text-mocha leading-relaxed">{product.shortDescription}</p>
+              <ProductBenefits product={product} />
+              <DeliveryPromise product={product} />
 
               {/* Size */}
               {uniqueProductSizes(product.sizes).length > 0 && (
                 <div className="mt-7">
-                  <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Розмір</p>
+                  <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3"><span className="text-champagne mr-2">01</span>Спальне місце</p>
                   <div className="flex flex-wrap gap-2">
                     {uniqueProductSizes(product.sizes).map((s) => (
-                      <button key={s} onClick={() => setSize(s)} className={`px-4 py-2.5 border text-sm transition-all ${size === s ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>
+                      <button key={s} onClick={() => { setSize(s); track('select_size', { item_id: product.sku, size: s }); }} className={`px-4 py-2.5 border text-sm transition-all ${size === s ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>
                     ))}
                   </div>
                   {size && <Link to={`/catalog/${product.category}/${sizeToSlug(size)}`} className="mt-3 inline-block text-xs text-champagne underline underline-offset-4 hover:text-espresso">Дивитись усі {CATEGORY_NAMES[product.category]?.toLowerCase() || 'товари'} {size} →</Link>}
@@ -294,7 +297,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                   <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Колір</p>
                   <div className="flex flex-wrap gap-3">
                     {product.colors.map((c) => (
-                      <button key={c} onClick={() => setColor(c)} aria-label={c} className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'border-espresso scale-110' : 'border-espresso/15'}`} style={{ background: c }} />
+                      <button key={c} onClick={() => { setColor(c); track('select_color', { item_id: product.sku, color: c }); }} aria-label={c} className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'border-espresso scale-110' : 'border-espresso/15'}`} style={{ background: c }} />
                     ))}
                   </div>
                 </div>
@@ -303,7 +306,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
               {/* Fabric */}
               {product.fabrics?.length > 0 && (
                 <>
-                  <FabricSelector fabrics={product.fabrics} value={fabric} onChange={setFabric} />
+                  <div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-1"><span className="text-champagne mr-2">02</span>Тканина та колір</p><FabricSelector fabrics={product.fabrics} value={fabric} onChange={(value) => { setFabric(value); track('select_fabric', { item_id: product.sku, fabric: value }); }} /></div>
                   <button onClick={() => setLead('fabric_sample')} className="mt-3 text-xs text-champagne underline underline-offset-4 hover:text-espresso">Замовити зразки тканини →</button>
                 </>
               )}
@@ -311,12 +314,12 @@ export default function Product({ initialProduct = null, initialRelated = [], in
               {/* Lifting mechanism (beds) */}
               {isBed && (
                 <div className="mt-6">
-                  <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Підйомний механізм</p>
+                  <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3"><span className="text-champagne mr-2">03</span>Комплектація</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setLifting(true)} className={`flex-1 px-4 py-3 border text-sm flex items-center justify-between transition-all ${lifting ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
+                    <button onClick={() => { setLifting(true); track('select_mechanism', { item_id: product.sku, mechanism: 'lifting' }); }} className={`flex-1 px-4 py-3 border text-sm flex items-center justify-between transition-all ${lifting ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
                       З механізмом <span className="text-xs opacity-80">+{LIFTING_SURCHARGE.toLocaleString('uk-UA')} ₴</span>
                     </button>
-                    <button onClick={() => setLifting(false)} className={`flex-1 px-4 py-3 border text-sm transition-all ${!lifting ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
+                    <button onClick={() => { setLifting(false); track('select_mechanism', { item_id: product.sku, mechanism: 'standard' }); }} className={`flex-1 px-4 py-3 border text-sm transition-all ${!lifting ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
                       Без механізму
                     </button>
                   </div>
@@ -326,13 +329,13 @@ export default function Product({ initialProduct = null, initialRelated = [], in
               {/* Compatible mattress (beds) */}
               {isBed && mattresses.length > 0 && (
                 <div className="mt-6">
-                  <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Сумісний матрац</p>
+                  <div className="flex items-end justify-between gap-4 mb-3"><div><p className="text-[11px] tracking-[0.22em] uppercase text-mocha"><span className="text-champagne mr-2">04</span>Матрац до комплекту</p><p className="text-xs text-mocha mt-1">Один комплект — одна доставка</p></div></div>
                   <div className="space-y-2">
-                    <button onClick={() => setMattress(null)} className={`w-full px-4 py-3 border text-sm text-left transition-all ${!mattress ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
+                    <button onClick={() => { setMattress(null); track('add_mattress', { item_id: product.sku, mattress: 'none' }); }} className={`w-full px-4 py-3 border text-sm text-left transition-all ${!mattress ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
                       Без матраца
                     </button>
                     {mattresses.map((m) => (
-                      <button key={m.id} onClick={() => setMattress(m.id)} className={`w-full px-4 py-3 border text-sm text-left flex items-center justify-between gap-3 transition-all ${mattress === m.id ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
+                      <button key={m.id} onClick={() => { setMattress(m.id); track('add_mattress', { item_id: product.sku, mattress_id: m.id, mattress_name: m.name, value: m.price }); }} className={`w-full px-4 py-3 border text-sm text-left flex items-center justify-between gap-3 transition-all ${mattress === m.id ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>
                         <span className="flex items-center gap-3 min-w-0">
                           <span className="w-10 h-10 flex-shrink-0 overflow-hidden bg-sand"><Image src={m.images?.[0]} alt="" className="w-full h-full" /></span>
                           <span className="min-w-0"><span className="block truncate">{m.name}</span><span className="block text-xs opacity-70 truncate">{m.shortDescription}</span></span>
@@ -343,6 +346,8 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                   </div>
                 </div>
               )}
+
+              <PurchaseSummary size={size} fabric={fabric} lifting={lifting} mattress={mattress} mattresses={mattresses} price={livePrice} />
 
               {/* Qty + Add */}
               <div className="mt-8 flex items-stretch gap-3">
@@ -358,16 +363,11 @@ export default function Product({ initialProduct = null, initialRelated = [], in
               </div>
 
               <div className="mt-3 flex gap-3">
-                <button onClick={() => setLead('one_click')} className="flex-1 py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors">Купити в 1 клік</button>
-                <button onClick={() => setLead('consultation')} className="flex-1 py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors">Консультація</button>
+                <button onClick={() => { track('one_click_open', { item_id: product.sku, value: livePrice, size }); setLead('one_click'); }} className="flex-1 py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors">Купити в 1 клік</button>
+                <button onClick={() => { track('consultation_open', { item_id: product.sku, source: 'product_buttons' }); setLead('consultation'); }} className="flex-1 py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors">Консультація</button>
               </div>
 
-              {/* Trust row */}
-              <div className="mt-8 grid grid-cols-3 gap-4 border-t border-espresso/10 pt-6 text-sm text-mocha">
-                <div className="flex flex-col items-center text-center gap-1"><Truck className="w-5 h-5 text-mocha" strokeWidth={1.4} /> Доставка по Україні</div>
-                <div className="flex flex-col items-center text-center gap-1"><Shield className="w-5 h-5 text-mocha" strokeWidth={1.4} /> Гарантія {product.warranty}</div>
-                <div className="flex flex-col items-center text-center gap-1"><RotateCcw className="w-5 h-5 text-mocha" strokeWidth={1.4} /> Trade-In</div>
-              </div>
+              <ReassuranceRow />
             </div>
           </div>
 
@@ -427,6 +427,10 @@ export default function Product({ initialProduct = null, initialRelated = [], in
             </div>
           </div>
 
+          <InteriorGallery product={product} />
+          <ReviewSummary product={product} />
+          <CompareModels products={related} />
+
           {/* Upsell */}
           {recommendations.length > 0 && (
             <div className="mt-20 md:mt-28">
@@ -443,15 +447,8 @@ export default function Product({ initialProduct = null, initialRelated = [], in
 
       <LeadModal open={lead !== null} onClose={() => setLead(null)} leadType={lead} product={product} context={{ variantSKU: buildVariantSKU(product?.sku, { size, color, fabric, lifting: isBed && lifting }), configuration: [size, color, fabric, isBed && lifting ? 'підйомний механізм' : ''].filter(Boolean).join(' / '), fabrics: fabric ? [fabric] : [], price: livePrice }} />
 
-      {/* Sticky mobile CTA */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-milk/95 backdrop-blur border-t border-espresso/12 px-5 py-3 flex items-center justify-between gap-4 shadow-elevated">
-        <div className="min-w-0">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-mocha">DOMERA</p>
-          <p className="font-heading text-xl text-espresso">{livePrice.toLocaleString('uk-UA')} ₴</p>
-          {isBed && !mattress && <p className="text-[10px] text-champagne truncate">＋ сумісний матрац</p>}
-        </div>
-        <button onClick={handleAdd} className="flex-1 max-w-[220px] py-3.5 bg-espresso text-milk text-[11px] tracking-[0.22em] uppercase">Купити</button>
-      </div>
+      <StickyBuyBar product={product} price={livePrice} size={size} onBuy={handleAdd} onQuickBuy={() => { track('one_click_open', { item_id: product.sku, value: livePrice, size, source: 'sticky' }); setLead('one_click'); }} />
+      <FloatingConsultation onClick={() => { track('consultation_open', { item_id: product.sku, source: 'floating' }); setLead('consultation'); }} />
     </div>
   );
 }

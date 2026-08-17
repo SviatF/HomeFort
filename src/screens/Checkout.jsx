@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from '@/lib/router';
 import { Check, ArrowRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -18,6 +18,7 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [contact, setContact] = useState({ name: '', phone: '', email: '' });
+  const phoneTracked = useRef(false);
   const [userId, setUserId] = useState('');
   const settings = useSettings();
   const [coupon, setCoupon] = useState('');
@@ -72,6 +73,13 @@ export default function Checkout() {
       trackMeta('InitiateCheckout', { currency: 'UAH', value: total + delivery });
     }
   }, []);
+
+  useEffect(() => {
+    if (!phoneTracked.current && String(contact.phone || '').replace(/\D/g, '').length >= 9) {
+      phoneTracked.current = true;
+      track('checkout_phone_entered', { value: grandTotal });
+    }
+  }, [contact.phone, grandTotal]);
 
   useEffect(() => {
     base44.auth.me().then((u) => {
@@ -155,7 +163,7 @@ export default function Checkout() {
           <nav className="text-xs text-mocha mb-6 flex gap-2">
             <Link to="/" className="hover:text-espresso">Головна</Link><span>/</span><span className="text-espresso">Оформлення</span>
           </nav>
-          <h1 className="font-heading text-[clamp(2.2rem,5vw,3.6rem)] text-espresso mb-12">Оформлення замовлення</h1>
+          <div className="mb-10"><p className="text-[10px] tracking-[0.24em] uppercase text-mocha mb-2">Фінальний крок</p><h1 className="font-heading text-[clamp(2.2rem,5vw,3.6rem)] text-espresso">Оформлення замовлення</h1><p className="text-sm text-mocha mt-3">Контакти → Доставка → Оплата. Решту ми уточнимо за потреби.</p></div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             <form onSubmit={submit} className="lg:col-span-7 space-y-10">
@@ -197,20 +205,21 @@ export default function Checkout() {
                 </div>
               </Section>
 
-              <Section title="Промокод" n="04">
-                <div className="flex gap-3">
-                  <input value={coupon} onChange={(e) => { setCoupon(e.target.value); setCouponState({ applied: false, discount: 0, name: '', error: '', loading: false }); }} placeholder="Введіть промокод" className="flex-1 bg-transparent border-b border-espresso/25 py-3 text-espresso placeholder:text-mocha/60 focus:border-espresso outline-none transition-colors uppercase" />
-                  <button type="button" onClick={applyCoupon} disabled={couponState.loading} className="px-6 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors disabled:opacity-60">
-                    {couponState.loading ? '…' : 'Застосувати'}
-                  </button>
-                </div>
-                {couponState.applied && <p className="mt-3 text-sm text-espresso">Знижку «{couponState.name}» застосовано: −{couponState.discount.toLocaleString('uk-UA')} ₴</p>}
-                {couponState.error && <p className="mt-3 text-sm text-[#8B3A2E]">{couponState.error}</p>}
-              </Section>
-
-              <Section title="Коментар" n="05">
-                <textarea name="comment" rows={4} placeholder="Побажання до замовлення" className="w-full bg-transparent border-b border-espresso/25 py-3 text-espresso placeholder:text-mocha/60 focus:border-espresso outline-none resize-none" />
-              </Section>
+              <div className="border-y border-espresso/10 divide-y divide-espresso/10">
+                <details className="group py-4">
+                  <summary className="cursor-pointer list-none flex items-center justify-between text-[11px] tracking-[0.18em] uppercase text-mocha"><span>Є промокод?</span><span className="text-lg leading-none group-open:rotate-45 transition-transform">+</span></summary>
+                  <div className="flex gap-3 mt-4">
+                    <input value={coupon} onChange={(e) => { setCoupon(e.target.value); setCouponState({ applied: false, discount: 0, name: '', error: '', loading: false }); }} placeholder="Введіть промокод" className="flex-1 bg-transparent border-b border-espresso/25 py-3 text-espresso placeholder:text-mocha/60 focus:border-espresso outline-none transition-colors uppercase" />
+                    <button type="button" onClick={applyCoupon} disabled={couponState.loading} className="px-5 border border-espresso/25 text-[10px] tracking-[0.16em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors disabled:opacity-60">{couponState.loading ? '…' : 'Застосувати'}</button>
+                  </div>
+                  {couponState.applied && <p className="mt-3 text-sm text-espresso">Знижку «{couponState.name}» застосовано: −{couponState.discount.toLocaleString('uk-UA')} ₴</p>}
+                  {couponState.error && <p className="mt-3 text-sm text-[#8B3A2E]">{couponState.error}</p>}
+                </details>
+                <details className="group py-4">
+                  <summary className="cursor-pointer list-none flex items-center justify-between text-[11px] tracking-[0.18em] uppercase text-mocha"><span>Додати коментар</span><span className="text-lg leading-none group-open:rotate-45 transition-transform">+</span></summary>
+                  <textarea name="comment" rows={3} placeholder="Побажання до замовлення" className="mt-4 w-full bg-transparent border-b border-espresso/25 py-3 text-espresso placeholder:text-mocha/60 focus:border-espresso outline-none resize-none" />
+                </details>
+              </div>
 
               <button type="submit" disabled={submitting} className="group w-full py-4 bg-espresso text-milk text-[12px] tracking-[0.22em] uppercase flex items-center justify-center gap-2 hover:bg-espresso-soft transition-colors disabled:opacity-60">
                 {submitting ? 'Обробка…' : <>Підтвердити замовлення <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" strokeWidth={1.4} /></>}
