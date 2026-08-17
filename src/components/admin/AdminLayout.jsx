@@ -1,6 +1,5 @@
 'use client';
 import { Outlet, NavLink, useNavigate } from '@/lib/router';
-import { base44 } from '@/api/base44Client';
 import { Box, Layers, FolderTree, Square, Package, ExternalLink, LogOut } from 'lucide-react';
 
 const nav = [
@@ -13,6 +12,15 @@ const nav = [
 
 export default function AdminLayout({ children }) {
   const navigate = useNavigate();
+
+  async function logout() {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+    } finally {
+      navigate('/admin-login');
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F4EFE7] flex">
       <aside className="w-64 bg-[#342112] text-[#FAF7F2] flex flex-col fixed h-screen">
@@ -44,10 +52,7 @@ export default function AdminLayout({ children }) {
             <ExternalLink className="w-4 h-4" strokeWidth={1.4} /> На сайт
           </button>
           <button
-            onClick={() => {
-              sessionStorage.removeItem('admin_pin_ok');
-              base44.auth.logout('/login');
-            }}
+            onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#FAF7F2]/65 hover:text-[#FAF7F2] transition-colors"
           >
             <LogOut className="w-4 h-4" strokeWidth={1.4} /> Вийти
