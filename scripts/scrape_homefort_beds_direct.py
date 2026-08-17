@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Approved direct catalog v1 — only URLs explicitly supplied by the owner.
 import json, re, time
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -59,7 +60,6 @@ def collect_product_images(soup,j):
     out=[]; seen=set()
     for u in unique:
         if product_folder(u)!=folder: continue
-        # Prefer 1000x1000 cache images; cache/original paths normalize to the same product folder.
         u=re.sub(r'-\d{2,4}x\d{2,4}(?=\.(?:png|jpe?g|webp)(?:\?|$))','-1000x1000',u,flags=re.I)
         if u not in seen:
             seen.add(u); out.append(u)
