@@ -1,5 +1,6 @@
 import { filterEntity } from '@/lib/base44-server';
 import { getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
+import { BED_SEMANTIC_LANDINGS } from '@/lib/bed-semantic-core';
 
 function sizeSlug(value = '') {
   const match = String(value).toLowerCase().replace(/см/g, '').match(/(\d{2,3})\s*[×хx]\s*(\d{2,3})/);
@@ -21,6 +22,13 @@ export default async function sitemap() {
   const categories = ['beds','mattresses','toppers','pillows','duvets','bedding','kids-mattresses'];
   const categoryRoutes = categories.map((key) => ({ url: `${base}/catalog/${key}`, lastModified: now, priority: key === 'beds' ? 0.95 : 0.85, changeFrequency: 'daily' }));
 
+  const semanticRoutes = Object.entries(BED_SEMANTIC_LANDINGS).map(([slug, landing]) => ({
+    url: `${base}/catalog/beds/${slug}`,
+    lastModified: now,
+    priority: landing.priority === 1 ? 0.92 : 0.82,
+    changeFrequency: 'weekly',
+  }));
+
   const [editableProducts, posts] = await Promise.all([
     filterEntity('Product', {}),
     filterEntity('Blog', { published: true }),
@@ -34,7 +42,7 @@ export default async function sitemap() {
   const sizeRoutes = sizeSlugs.map((size) => ({
     url: `${base}/catalog/beds/${size}`,
     lastModified: now,
-    priority: 0.82,
+    priority: ['140x200','160x200','180x200','200x200'].includes(size) ? 0.9 : 0.8,
     changeFrequency: 'weekly',
   }));
 
@@ -54,5 +62,5 @@ export default async function sitemap() {
     images: p.coverImage ? [p.coverImage] : undefined,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...sizeRoutes, ...productRoutes, ...postRoutes];
+  return [...staticRoutes, ...categoryRoutes, ...semanticRoutes, ...sizeRoutes, ...productRoutes, ...postRoutes];
 }
