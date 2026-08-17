@@ -27,13 +27,31 @@ const CATEGORY_NAMES = {
   'kids-mattresses': 'Дитячі матраци',
 };
 
+const normalizeProductSize = (value = '') => {
+  const raw = String(value).trim().toLowerCase().replace(/\s+/g, '');
+  const match = raw.match(/(\d{2,3})\D+(\d{2,3})/);
+  if (!match) return String(value).trim();
+  return `${Number(match[1])}×${Number(match[2])}`;
+};
+
+const uniqueProductSizes = (sizes = []) => {
+  const seen = new Set();
+  return sizes
+    .map(normalizeProductSize)
+    .filter((value) => {
+      if (!value || seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+};
+
 export default function Product({ initialProduct = null, initialRelated = [], initialMattresses = [], initialCrossSell = [] } = {}) {
   const { slug } = useParams();
   const [product, setProduct] = useState(initialProduct);
   const [related, setRelated] = useState(initialRelated);
   const [loading, setLoading] = useState(!initialProduct);
   const [activeImg, setActiveImg] = useState(0);
-  const [size, setSize] = useState(initialProduct?.sizes?.[0] || '');
+  const [size, setSize] = useState(normalizeProductSize(initialProduct?.sizes?.[0] || ''));
   const [color, setColor] = useState(initialProduct?.colors?.[0] || '');
   const [fabric, setFabric] = useState(initialProduct?.fabrics?.[0] || '');
   const [qty, setQty] = useState(1);
@@ -72,7 +90,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
       setRelated(initialRelated || []);
       setMattresses(initialMattresses || []);
       setCrossSell(initialCrossSell || []);
-      setSize(initialProduct.sizes?.[0] || '');
+      setSize(normalizeProductSize(initialProduct.sizes?.[0] || ''));
       setColor(initialProduct.colors?.[0] || '');
       setFabric(initialProduct.fabrics?.[0] || '');
       setLoading(false);
@@ -84,7 +102,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
         const p = (res || [])[0];
         setProduct(p);
         if (p) {
-          setSize(p.sizes?.[0] || '');
+          setSize(normalizeProductSize(p.sizes?.[0] || ''));
           setColor(p.colors?.[0] || '');
           setFabric(p.fabrics?.[0] || '');
           setActiveImg(0);
@@ -258,11 +276,11 @@ export default function Product({ initialProduct = null, initialRelated = [], in
               <p className="mt-6 text-mocha leading-relaxed">{product.shortDescription}</p>
 
               {/* Size */}
-              {product.sizes?.length > 0 && (
+              {uniqueProductSizes(product.sizes).length > 0 && (
                 <div className="mt-7">
                   <p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Розмір</p>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((s) => (
+                    {uniqueProductSizes(product.sizes).map((s) => (
                       <button key={s} onClick={() => setSize(s)} className={`px-4 py-2.5 border text-sm transition-all ${size === s ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>
                     ))}
                   </div>
