@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { Link } from '@/lib/router';
-import { Heart, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
+import { Heart, ChevronLeft, ChevronRight, ArrowUpRight, GitCompare } from 'lucide-react';
 import { track, buildItem } from '@/lib/analytics';
 import { useWishlist } from '@/lib/WishlistContext';
+import { useCompare } from '@/lib/CompareContext';
 import { Image } from '@/components/ui/image';
 
 function cleanName(name = '') {
@@ -17,6 +18,8 @@ function cleanName(name = '') {
 export default function ProductCard({ product, dark = false }) {
   const { has, toggle } = useWishlist();
   const inWishlist = has(product.id);
+  const compare = useCompare();
+  const inCompare = compare.has(product.id);
   const images = (product.images || []).filter(Boolean);
   const [imageIndex, setImageIndex] = useState(0);
   const activeImage = images[imageIndex] || images[0];
@@ -58,19 +61,19 @@ export default function ProductCard({ product, dark = false }) {
             )}
           </div>
 
-          <button
-            type="button"
-            aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0] });
-              track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] });
-            }}
-            className="pointer-events-auto w-10 h-10 bg-milk/92 backdrop-blur-md flex items-center justify-center text-espresso transition-transform hover:scale-105"
-          >
-            <Heart className="w-[17px] h-[17px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} />
-          </button>
+          <div className="pointer-events-auto flex flex-col gap-2">
+            <button
+              type="button"
+              aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'}
+              onClick={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0] });
+                track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] });
+              }}
+              className="w-10 h-10 bg-milk/92 backdrop-blur-md flex items-center justify-center text-espresso transition-transform hover:scale-105"
+            ><Heart className="w-[17px] h-[17px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
+            <button type="button" aria-label="Порівняти" onClick={(e)=>{e.preventDefault();e.stopPropagation();compare.toggle(product);track(inCompare?'compare_remove':'compare_add',{item_id:product.sku});}} className={`w-10 h-10 backdrop-blur-md flex items-center justify-center transition-transform hover:scale-105 ${inCompare ? 'bg-espresso text-milk' : 'bg-milk/92 text-espresso'}`}><GitCompare className="w-[17px] h-[17px]" strokeWidth={1.45}/></button>
+          </div>
         </div>
 
         {hasGallery && (

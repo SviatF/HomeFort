@@ -7,6 +7,7 @@ import {
 import { useCart } from '@/lib/CartContext';
 import { track } from '@/lib/analytics';
 import { useWishlist } from '@/lib/WishlistContext';
+import { useCompare } from '@/lib/CompareContext';
 import SearchOverlay from './SearchOverlay';
 
 const catalog = [
@@ -36,6 +37,7 @@ export default function Header({ dark = false }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const { count, open } = useCart();
   const { count: wishCount } = useWishlist();
+  const { count: compareCount, open: openCompare } = useCompare();
 
   const d = dark;
   const bar = d
@@ -110,7 +112,7 @@ export default function Header({ dark = false }) {
             <div className={`flex items-center gap-5 ${icon}`}>
               <button aria-label="Пошук" onClick={() => setSearchOpen(true)} className={`hidden sm:block ${hover} transition-colors`}><Search className="w-[18px] h-[18px]" strokeWidth={1.5} /></button>
               <a href="tel:+380441234567" aria-label="Телефон" onClick={() => track('phone_click')} className={`hidden md:block ${hover} transition-colors`}><Phone className="w-[18px] h-[18px]" strokeWidth={1.5} /></a>
-              <button aria-label="Порівняти" className={`hidden sm:block ${hover} transition-colors`}><GitCompare className="w-[18px] h-[18px]" strokeWidth={1.5} /></button>
+              <button aria-label="Порівняти" onClick={openCompare} className={`hidden sm:block relative ${hover} transition-colors`}><GitCompare className="w-[18px] h-[18px]" strokeWidth={1.5} />{compareCount > 0 && <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full ${badge} text-[9px] flex items-center justify-center font-medium`}>{compareCount}</span>}</button>
               <Link to="/wishlist" aria-label="Обране" className={`relative ${hover} transition-colors`}><Heart className="w-[18px] h-[18px]" strokeWidth={1.5} />{wishCount > 0 && <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full ${badge} text-[9px] flex items-center justify-center font-medium`}>{wishCount}</span>}</Link>
               <button aria-label="Акаунт" className={`hidden sm:block ${hover} transition-colors`}><User className="w-[18px] h-[18px]" strokeWidth={1.5} /></button>
               <button aria-label="Кошик" onClick={open} className={`relative ${hover} transition-colors`}>

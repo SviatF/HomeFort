@@ -7,7 +7,7 @@ import { track } from '@/lib/analytics';
 import { searchProducts } from '@/lib/search';
 import { Image } from '@/components/ui/image';
 
-const popular = ['Ліжко Lino', 'Матрац Soft Cloud', 'Постільна білизна', 'Подушка Natural'];
+const popular = ['Soft', 'Seul', 'Bestseller', '160×200', 'ліжко до 15000'];
 
 export default function SearchOverlay({ open, onClose }) {
   const [q, setQ] = useState('');
@@ -23,9 +23,15 @@ export default function SearchOverlay({ open, onClose }) {
     let active = true;
     if (!q.trim()) { setResults([]); return; }
     const t = setTimeout(async () => {
-      const all = await base44.entities.Product.list('-updated_date', 200);
+      const [remote, scrapedRes] = await Promise.all([base44.entities.Product.list('-updated_date', 200).catch(()=>[]), fetch('/data/homefort-beds.json').catch(()=>null)]);
+      let scraped = [];
+      try { const data = scrapedRes ? await scrapedRes.json() : {}; scraped = data.products || data.items || []; } catch {}
+      const bySlug = new Map(); [...scraped, ...(remote || [])].forEach((p)=>bySlug.set(p.slug || p.id, p));
+      let all = [...bySlug.values()];
+      const budget = String(q).match(/(?:до|under)?\s*(\d{4,6})/i);
+      if (budget) all = all.filter((p)=>Number(p.price||0) <= Number(budget[1]));
       if (!active) return;
-      setResults(searchProducts(all, q, 6));
+      setResults(searchProducts(all, q.replace(/(?:до|under)?\s*\d{4,6}/i,'').trim() || q, 6));
       track('search', { search_term: q });
     }, 250);
     return () => { active = false; clearTimeout(t); };
@@ -58,6 +64,7 @@ export default function SearchOverlay({ open, onClose }) {
                   <button key={p} onClick={() => setQ(p)} className="px-4 py-2.5 border border-[#342112]/20 text-sm text-[#342112] hover:border-[#342112] transition-colors">{p}</button>
                 ))}
               </div>
+              <Link to="/bed-finder" onClick={()=>{track('bed_finder_open',{source:'search'});onClose();}} className="mt-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-[#342112] border-b border-[#342112]/30 pb-1">Не знаєте що обрати? Smart Finder →</Link>
             </div>
           )}
 

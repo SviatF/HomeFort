@@ -7,6 +7,7 @@
   "/admin/page": "/admin",
   "/admin/products/page": "/admin/products",
   "/admin/variants/page": "/admin/variants",
+  "/bed-finder/page": "/bed-finder",
   "/catalog/[category]/[[...size]]/page": "/catalog/[category]/[[...size]]",
   "/checkout/page": "/checkout",
   "/delivery-payment/page": "/delivery-payment",

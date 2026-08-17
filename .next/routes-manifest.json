@@ -112,6 +112,12 @@
       "namedRegex": "^/admin/variants(?:/)?$"
     },
     {
+      "page": "/bed-finder",
+      "regex": "^/bed\\-finder(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/bed\\-finder(?:/)?$"
+    },
+    {
       "page": "/checkout",
       "regex": "^/checkout(?:/)?$",
       "routeKeys": {},

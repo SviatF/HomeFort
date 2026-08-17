@@ -5,6 +5,7 @@ import TrustStrip from '@/components/domera/TrustStrip';
 import Categories from '@/components/domera/Categories';
 import Philosophy from '@/components/domera/Philosophy';
 import Bestsellers from '@/components/domera/Bestsellers';
+import SmartFinderCTA from '@/components/domera/SmartFinderCTA';
 import ProductSpotlight from '@/components/domera/ProductSpotlight';
 import Bundles from '@/components/domera/Bundles';
 import SleepSystem from '@/components/domera/SleepSystem';
@@ -56,6 +57,7 @@ export default function Home() {
         <Categories />
         <Philosophy />
         <Bestsellers />
+        <SmartFinderCTA />
         <ProductSpotlight />
         <Bundles />
         <SleepSystem />

@@ -7,6 +7,7 @@
   "/admin/page": "app/admin/page.js",
   "/admin/products/page": "app/admin/products/page.js",
   "/admin/variants/page": "app/admin/variants/page.js",
+  "/bed-finder/page": "app/bed-finder/page.js",
   "/catalog/[category]/[[...size]]/page": "app/catalog/[category]/[[...size]]/page.js",
   "/checkout/page": "app/checkout/page.js",
   "/delivery-payment/page": "app/delivery-payment/page.js",

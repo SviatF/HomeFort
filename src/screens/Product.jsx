@@ -17,6 +17,8 @@ import Seo from '@/components/Seo';
 import LeadModal from '@/components/domera/LeadModal';
 import { Image } from '@/components/ui/image';
 import { ProductBenefits, PriceValueBlock, DeliveryPromise, PurchaseSummary, InteriorGallery, ReviewSummary, CompareModels, StickyBuyBar, FloatingConsultation, ReassuranceRow } from '@/components/domera/ProductConversionSections';
+import { DeliveryEstimator, ShareConfiguration, RecentlyViewedRail } from '@/components/domera/CROPhase2Sections';
+import { useRecentlyViewed } from '@/lib/RecentlyViewedContext';
 
 const CATEGORY_NAMES = {
   beds: 'Ліжка',
@@ -64,6 +66,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
   const [crossSell, setCrossSell] = useState(initialCrossSell);
   const { add } = useCart();
   const { has: hasWish, toggle: toggleWish } = useWishlist();
+  const recentlyViewed = useRecentlyViewed();
 
   const LIFTING_SURCHARGE = 2400;
   const isBed = product?.category === 'beds';
@@ -129,6 +132,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
 
   useEffect(() => {
     if (product) {
+      recentlyViewed.add(product);
       track('view_item', { items: [buildItem(product, { variantSKU: buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting }), size, color, fabric, price: livePrice })] });
       trackMeta('ViewContent', { currency: 'UAH', value: livePrice, content_name: product.name, content_ids: [product.sku], content_type: 'product' });
     }
@@ -277,6 +281,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
 
               <ProductBenefits product={product} />
               <DeliveryPromise product={product} />
+              <DeliveryEstimator productionTime={product.productionTime} />
 
               {/* Size */}
               {uniqueProductSizes(product.sizes).length > 0 && (
@@ -348,6 +353,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
               )}
 
               <PurchaseSummary size={size} fabric={fabric} lifting={lifting} mattress={mattress} mattresses={mattresses} price={livePrice} />
+              <ShareConfiguration product={product} size={size} fabric={fabric} lifting={lifting} price={livePrice} />
 
               {/* Qty + Add */}
               <div className="mt-8 flex items-stretch gap-3">
@@ -430,6 +436,8 @@ export default function Product({ initialProduct = null, initialRelated = [], in
           <InteriorGallery product={product} />
           <ReviewSummary product={product} />
           <CompareModels products={related} />
+
+          <RecentlyViewedRail currentId={product.id} />
 
           {/* Upsell */}
           {recommendations.length > 0 && (

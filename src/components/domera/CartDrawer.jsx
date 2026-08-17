@@ -8,6 +8,9 @@ import { Image } from '@/components/ui/image';
 
 export default function CartDrawer() {
   const { items, isOpen, close, remove, updateQty, total } = useCart();
+  const freeDeliveryTarget = 30000;
+  const remaining = Math.max(0, freeDeliveryTarget - total);
+  const progress = Math.min(100, (total / freeDeliveryTarget) * 100);
 
   useEffect(() => {
     if (isOpen && items.length > 0) {
@@ -64,6 +67,7 @@ export default function CartDrawer() {
             </div>
 
             <div className="border-t border-[#342112]/10 px-6 py-6">
+              <div className="mb-5"><div className="flex justify-between text-[11px] mb-2"><span className="text-[#755A44]">{remaining > 0 ? `До безкоштовної доставки ще ${remaining.toLocaleString('uk-UA')} ₴` : 'Безкоштовна доставка активована ✓'}</span><span className="text-[#342112]">{Math.round(progress)}%</span></div><div className="h-1 bg-[#342112]/10"><div className="h-1 bg-[#342112] transition-all" style={{width:`${progress}%`}} /></div>{remaining > 0 && <Link to="/catalog/mattresses" onClick={close} className="mt-3 inline-block text-[10px] uppercase tracking-[0.16em] text-[#937C68] underline underline-offset-4">Додати матрац або текстиль →</Link>}</div>
               <div className="flex justify-between items-baseline mb-5">
                 <span className="text-[11px] tracking-[0.22em] uppercase text-[#937C68]">Разом</span>
                 <span className="font-heading text-3xl text-[#342112]">{total.toLocaleString('uk-UA')} ₴</span>
