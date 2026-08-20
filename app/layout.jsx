@@ -1,4 +1,5 @@
 import '@/index.css';
+import '@/ui-a-f.css';
 import AppProviders from '@/components/AppProviders';
 
 const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://domera.shop';
