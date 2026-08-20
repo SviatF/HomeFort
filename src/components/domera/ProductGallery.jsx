@@ -30,7 +30,7 @@ export default function ProductGallery({ images = [], videoUrl, salePercent, nam
         ) : (
           <ProductImage src={current.url} alt={name} priority={active === 0} sizes="(max-width: 1023px) 100vw, 58vw" quality={72} className={`w-full h-full transition-transform duration-300 ${zoom ? 'scale-[1.7] cursor-zoom-out' : 'cursor-zoom-in'}`} />
         )}
-        {salePercent > 0 && <span className="product-status-badge absolute top-4 left-4 pointer-events-none">−{salePercent}%</span>}
+        {salePercent > 0 && <span className="product-sale-badge absolute top-4 left-4 pointer-events-none">−{salePercent}%</span>}
       </div>
       {slides.length > 1 && (
         <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
