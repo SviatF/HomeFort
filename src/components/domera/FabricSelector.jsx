@@ -6,7 +6,14 @@ const normalise = (f) => typeof f === 'string'
   : { name: f?.name || f?.label || 'Тканина', colorHex: f?.colorHex || f?.color || '', swatchImage: f?.swatchImage || f?.image || '', macroImage: f?.macroImage || '', composition: f?.composition || '', martindale: f?.martindale || '', description: f?.description || '' };
 
 export default function FabricSelector({ fabrics = [], value, onChange }) {
-  if (!Array.isArray(fabrics) || fabrics.length === 0) return null;
+  if (!Array.isArray(fabrics) || fabrics.length === 0) {
+    return (
+      <div className="ui-radius-md mt-3 border border-espresso/10 bg-ivory p-4">
+        <p className="text-[13px] font-semibold text-espresso">Тканина підбирається індивідуально</p>
+        <p className="mt-1 text-[13px] leading-relaxed text-mocha">Фото й характеристики доступних колекцій тканини підтвердить менеджер для конкретної моделі. Ми не показуємо вигадані кольори або матеріали, якщо їх немає в каталозі.</p>
+      </div>
+    );
+  }
   const options = fabrics.map(normalise);
   const selected = options.find((f) => f.name === value) || options[0];
 
