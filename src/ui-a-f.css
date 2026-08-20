@@ -25,6 +25,12 @@
 html, body { max-width: 100%; overflow-x: clip; }
 body { min-width: 320px; background: var(--canvas); color: var(--text); font-size: var(--type-body); }
 
+/* UI-35 — legacy microcopy can never render below the 13px acceptance floor. */
+[class*="text-[9px]"],
+[class*="text-[10px]"],
+[class*="text-[11px]"],
+[class*="text-[12px]"] { font-size: 13px !important; }
+
 .ui-radius-sm { border-radius: var(--radius-sm); }
 .ui-radius-md { border-radius: var(--radius-md); }
 .ui-radius-lg { border-radius: var(--radius-lg); }
@@ -63,17 +69,25 @@ a:not([data-tap-target='true']) { min-height: 1px; }
 }
 .product-card-media { aspect-ratio: 4 / 5; background: var(--canvas); }
 .product-card-price { font-weight: 800; line-height: .98; letter-spacing: -.025em; }
-.product-status-badge {
+.product-status-badge,
+.product-sale-badge {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
   padding: 6px 9px;
   border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 650;
+}
+.product-status-badge {
   background: color-mix(in srgb, var(--amber) 12%, var(--surface));
   color: var(--brand);
   border: 1px solid color-mix(in srgb, var(--amber) 34%, var(--surface));
-  font-size: 13px;
-  font-weight: 650;
+}
+.product-sale-badge {
+  background: color-mix(in srgb, var(--brand) 88%, transparent);
+  color: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--brand) 72%, transparent);
 }
 .fabric-dot {
   width: 24px;
