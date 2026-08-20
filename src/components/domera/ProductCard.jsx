@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from '@/lib/router';
 import { Heart, ChevronLeft, ChevronRight, ArrowUpRight, GitCompare } from 'lucide-react';
 import { track, buildItem } from '@/lib/analytics';
@@ -30,13 +30,24 @@ export default function ProductCard({ product, dark = false }) {
   const inWishlist = has(product.id);
   const compare = useCompare();
   const inCompare = compare.has(product.id);
-  const images = (product.images || []).filter(Boolean);
+  const images = useMemo(() => (product.images || []).filter(Boolean), [product.images]);
   const [imageIndex, setImageIndex] = useState(0);
-  const activeImage = images[imageIndex] || images[0];
-  const hasGallery = images.length > 1;
+  const [failedImages, setFailedImages] = useState(() => new Set());
+  const usableImages = useMemo(() => images.filter((src) => !failedImages.has(src)), [images, failedImages]);
+  const activeImage = usableImages[imageIndex] || usableImages[0] || '';
+  const hasGallery = usableImages.length > 1;
   const title = cleanName(product.name);
   const swatches = useMemo(() => fabricVisuals(product), [product]);
   const availability = product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення';
+
+  useEffect(() => {
+    setFailedImages(new Set());
+    setImageIndex(0);
+  }, [product.id, product.slug]);
+
+  useEffect(() => {
+    if (imageIndex >= usableImages.length) setImageIndex(0);
+  }, [imageIndex, usableImages.length]);
 
   const rememberScroll = () => {
     try { sessionStorage.setItem(`domera-scroll:${window.location.pathname}`, String(window.scrollY)); } catch {}
@@ -44,14 +55,28 @@ export default function ProductCard({ product, dark = false }) {
 
   const goToImage = (step) => {
     if (!hasGallery) return;
-    setImageIndex((current) => (current + step + images.length) % images.length);
+    setImageIndex((current) => (current + step + usableImages.length) % usableImages.length);
+  };
+
+  const handleImageError = () => {
+    if (!activeImage) return;
+    setFailedImages((current) => {
+      const next = new Set(current);
+      next.add(activeImage);
+      return next;
+    });
+    setImageIndex(0);
   };
 
   return (
     <article className={`product-card-shell group ${dark ? 'text-milk' : 'text-espresso'}`}>
       <div className="product-card-media relative overflow-hidden">
         <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem(product)] }); }} className="block h-full" data-tap-target="true">
-          <ProductImage src={activeImage} alt={product.imageAlt || product.name} sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 28vw" quality={60} className="w-full h-full transition-transform duration-500 ease-out group-hover:scale-[1.018]" />
+          {activeImage ? (
+            <ProductImage src={activeImage} alt={product.imageAlt || product.name} sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 28vw" quality={60} className="w-full h-full transition-transform duration-500 ease-out group-hover:scale-[1.018]" onError={handleImageError} />
+          ) : (
+            <div className="w-full h-full bg-sand flex items-center justify-center text-[13px] text-mocha">Фото готується</div>
+          )}
         </Link>
 
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 pointer-events-none">
@@ -60,7 +85,7 @@ export default function ProductCard({ product, dark = false }) {
             {product.salePercent > 0 && <span className="product-sale-badge">−{product.salePercent}%</span>}
           </div>
           <div className="pointer-events-auto flex gap-2">
-            <button type="button" aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0] }); track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] }); }} className="ui-radius-sm w-11 h-11 bg-milk/95 backdrop-blur-md flex items-center justify-center text-espresso"><Heart className="w-[18px] h-[18px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
+            <button type="button" aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: usableImages[0] || images[0] }); track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] }); }} className="ui-radius-sm w-11 h-11 bg-milk/95 backdrop-blur-md flex items-center justify-center text-espresso"><Heart className="w-[18px] h-[18px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
             <button type="button" aria-label="Порівняти" onClick={(e)=>{e.preventDefault();e.stopPropagation();compare.toggle(product);track(inCompare?'compare_remove':'compare_add',{item_id:product.sku});}} className={`ui-radius-sm w-11 h-11 backdrop-blur-md flex items-center justify-center ${inCompare ? 'bg-espresso text-milk' : 'bg-milk/95 text-espresso'}`}><GitCompare className="w-[18px] h-[18px]" strokeWidth={1.45}/></button>
           </div>
         </div>
