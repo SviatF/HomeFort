@@ -20,22 +20,22 @@ const cats = [
 ];
 
 const mini = [
-  { n: '04', title: 'Наматрацники', to: '/catalog/textile' },
-  { n: '05', title: 'Подушки', to: '/catalog/textile' },
-  { n: '06', title: 'Ковдри', to: '/catalog/textile' },
-  { n: '07', title: 'Дитячі матраци', to: '/catalog/mattresses' },
+  { n: '04', title: 'Наматрацники', to: '/catalog/toppers' },
+  { n: '05', title: 'Подушки', to: '/catalog/pillows' },
+  { n: '06', title: 'Ковдри', to: '/catalog/duvets' },
+  { n: '07', title: 'Дитячі матраци', to: '/catalog/kids-mattresses' },
 ];
 
 export default function Categories() {
   return (
-    <section className="bg-espresso py-24 md:py-36">
+    <section className="bg-ivory py-24 md:py-36 text-espresso">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <Reveal className="max-w-2xl mb-14 md:mb-20">
           <p className="text-[11px] tracking-[0.32em] uppercase text-champagne mb-4 font-medium">Категорії</p>
-          <h2 className="font-heading text-[clamp(2rem,4.5vw,3.6rem)] leading-[1.06] text-milk">
+          <h2 className="font-heading text-[clamp(2rem,4.5vw,3.6rem)] leading-[1.06] text-espresso">
             Створіть спальню навколо себе
           </h2>
-          <p className="mt-5 text-milk/60 text-lg leading-relaxed">
+          <p className="mt-5 text-mocha text-lg leading-relaxed">
             Від основи вашого сну до деталей, які створюють відчуття дому.
           </p>
         </Reveal>
@@ -47,21 +47,21 @@ export default function Categories() {
               as={Link}
               to={c.to}
               delay={i * 80}
-              className={`group relative overflow-hidden border border-milk/10 shadow-soft hover:shadow-card transition-shadow duration-500 ${c.span}`}
+              className={`group relative overflow-hidden border border-espresso/10 shadow-soft hover:shadow-card transition-shadow duration-500 ${c.span}`}
             >
               <Image
                 src={c.img}
                 alt={c.title}
                 className="absolute inset-0 w-full h-full transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-espresso/85 via-espresso/25 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-espresso/88 via-espresso/24 to-transparent" />
               <div className="relative h-full flex flex-col justify-end p-6 md:p-8 min-h-[inherit]">
                 <span className="text-[10px] tracking-[0.32em] uppercase text-champagne mb-2 font-medium">{c.n}</span>
                 <div className="flex items-end justify-between">
                   <h3 className="font-heading text-milk text-3xl md:text-4xl">{c.title}</h3>
                   <ArrowUpRight className="w-6 h-6 text-milk/80 -translate-y-1 transition-all duration-500 group-hover:translate-y-0 group-hover:text-champagne" strokeWidth={1.4} />
                 </div>
-                <span className="mt-3 inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-milk/85 border-b border-milk/40 pb-0.5 self-start group-hover:border-champagne group-hover:text-champagne transition-colors">
+                <span className="mt-3 inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-milk/90 border-b border-milk/45 pb-0.5 self-start group-hover:border-champagne group-hover:text-champagne transition-colors">
                   Обрати
                 </span>
               </div>
@@ -76,13 +76,13 @@ export default function Categories() {
               as={Link}
               to={m.to}
               delay={i * 60}
-              className="group flex items-center justify-between border-b border-milk/15 pb-4 hover:border-milk transition-colors"
+              className="group flex items-center justify-between border-b border-espresso/15 pb-4 hover:border-espresso transition-colors"
             >
               <span className="flex items-baseline gap-3">
                 <span className="text-[10px] tracking-[0.3em] text-champagne font-medium">{m.n}</span>
-                <span className="font-heading text-xl text-milk group-hover:text-champagne transition-colors">{m.title}</span>
+                <span className="font-heading text-xl text-espresso group-hover:text-mocha transition-colors">{m.title}</span>
               </span>
-              <ArrowUpRight className="w-4 h-4 text-milk/60 group-hover:text-milk transition-colors" strokeWidth={1.5} />
+              <ArrowUpRight className="w-4 h-4 text-mocha group-hover:text-espresso transition-colors" strokeWidth={1.5} />
             </Reveal>
           ))}
         </div>
