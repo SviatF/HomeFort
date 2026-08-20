@@ -57,7 +57,7 @@ export default function ProductCard({ product, dark = false }) {
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 pointer-events-none">
           <div className="flex flex-col items-start gap-1.5 max-w-[72%]">
             <span className="product-status-badge">{availability}</span>
-            {product.salePercent > 0 && <span className="product-status-badge">−{product.salePercent}%</span>}
+            {product.salePercent > 0 && <span className="product-sale-badge">−{product.salePercent}%</span>}
           </div>
           <div className="pointer-events-auto flex gap-2">
             <button type="button" aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0] }); track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] }); }} className="ui-radius-sm w-11 h-11 bg-milk/95 backdrop-blur-md flex items-center justify-center text-espresso"><Heart className="w-[18px] h-[18px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
