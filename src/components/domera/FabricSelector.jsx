@@ -1,53 +1,34 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Image } from '@/components/ui/image';
 
-export default function FabricSelector({ fabrics, value, onChange }) {
-  const [all, setAll] = useState([]);
+const normalise = (f) => typeof f === 'string'
+  ? { name: f }
+  : { name: f?.name || f?.label || 'Тканина', colorHex: f?.colorHex || f?.color || '', swatchImage: f?.swatchImage || f?.image || '', macroImage: f?.macroImage || '', composition: f?.composition || '', martindale: f?.martindale || '', description: f?.description || '' };
 
-  useEffect(() => {
-    if (!fabrics || fabrics.length === 0) return;
-    let active = true;
-    base44.entities.Fabric.list('-created_date', 100)
-      .then((res) => { if (active) setAll(res || []); })
-      .catch(() => { if (active) setAll([]); });
-    return () => { active = false; };
-  }, [(fabrics || []).join(',')]);
-
-  if (!fabrics || fabrics.length === 0) return null;
-  const selected = all.find((f) => f.name === value);
+export default function FabricSelector({ fabrics = [], value, onChange }) {
+  if (!Array.isArray(fabrics) || fabrics.length === 0) return null;
+  const options = fabrics.map(normalise);
+  const selected = options.find((f) => f.name === value) || options[0];
 
   return (
-    <div className="mt-6">
-      <p className="text-[11px] tracking-[0.22em] uppercase text-[#937C68] mb-3">Тканина</p>
-      <div className="flex flex-wrap gap-2">
-        {fabrics.map((f) => {
-          const fab = all.find((x) => x.name === f);
-          return (
-            <button
-              key={f}
-              onClick={() => onChange(f)}
-              className={`flex items-center gap-2 pl-1.5 pr-4 py-1.5 border text-sm transition-all ${value === f ? 'border-[#342112] bg-[#342112] text-[#FAF7F2]' : 'border-[#342112]/20 text-[#342112] hover:border-[#342112]'}`}
-            >
-              {fab?.swatchImage ? (
-                <Image src={fab.swatchImage} alt="" className="w-6 h-6 rounded-full" />
-              ) : fab?.colorHex ? (
-                <span className="w-6 h-6 rounded-full border border-[#342112]/15" style={{ background: fab.colorHex }} />
-              ) : null}
-              {f}
-            </button>
-          );
-        })}
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Оберіть тканину">
+        {options.map((fab, index) => (
+          <button key={`${fab.name}-${index}`} type="button" role="radio" aria-checked={value === fab.name} aria-label={fab.name} title={fab.name}
+            onClick={() => onChange?.(fab.name, index, fab)}
+            className={`ui-radius-sm w-11 h-11 min-w-11 p-0 overflow-hidden border-2 transition-all ${value === fab.name ? 'border-espresso ring-2 ring-espresso/15' : 'border-espresso/15 hover:border-espresso/45'}`}>
+            {fab.macroImage || fab.swatchImage ? <Image src={fab.macroImage || fab.swatchImage} alt={fab.name} width="88" height="88" loading="lazy" className="w-full h-full object-cover" /> : fab.colorHex ? <span className="block w-full h-full" style={{ background: fab.colorHex }} /> : <span className="flex w-full h-full items-center justify-center bg-sand text-espresso text-[13px] font-semibold">{fab.name.slice(0, 2).toUpperCase()}</span>}
+          </button>
+        ))}
       </div>
-      {selected && (
-        <div className="mt-4 flex gap-4 p-4 bg-[#F5E4D1]/40 border border-[#342112]/10">
-          {selected.macroImage && <Image src={selected.macroImage} alt={selected.name} className="w-24 h-24 flex-shrink-0" />}
-          <div className="text-sm min-w-0">
-            <p className="font-heading text-lg text-[#342112]">{selected.name}</p>
-            {selected.composition && <p className="text-[#755A44]">Склад: {selected.composition}</p>}
-            {selected.martindale ? <p className="text-[#755A44]">Стійкість: {selected.martindale.toLocaleString('uk-UA')} циклів Martindale</p> : null}
-            {selected.description && <p className="text-[#755A44] mt-1 leading-relaxed">{selected.description}</p>}
+      <p className="mt-2 text-[13px] text-espresso" aria-live="polite">{selected?.name}</p>
+      {(selected?.macroImage || selected?.composition || selected?.martindale || selected?.description) && (
+        <div className="ui-radius-md mt-3 flex gap-4 p-4 bg-ivory border border-espresso/10">
+          {selected.macroImage && <Image src={selected.macroImage} alt={`Макро тканини ${selected.name}`} width="160" height="160" loading="lazy" className="w-20 h-20 object-cover ui-radius-sm flex-shrink-0" />}
+          <div className="text-[13px] min-w-0">
+            {selected.composition && <p className="text-mocha">Склад: {selected.composition}</p>}
+            {selected.martindale && <p className="text-mocha">Стійкість: {Number(selected.martindale).toLocaleString('uk-UA')} циклів Martindale</p>}
+            {selected.description && <p className="text-mocha mt-1 leading-relaxed">{selected.description}</p>}
           </div>
         </div>
       )}
