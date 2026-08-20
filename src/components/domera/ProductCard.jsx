@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from '@/lib/router';
 import { Heart, ChevronLeft, ChevronRight, ArrowUpRight, GitCompare } from 'lucide-react';
 import { track, buildItem } from '@/lib/analytics';
@@ -15,6 +15,16 @@ function cleanName(name = '') {
     .trim();
 }
 
+function fabricVisuals(product) {
+  const fabrics = Array.isArray(product.fabrics) ? product.fabrics : [];
+  const colors = Array.isArray(product.colors) ? product.colors : [];
+  const rich = fabrics.filter((f) => f && typeof f === 'object' && (f.image || f.color)).map((f) => ({
+    name: f.name || f.label || 'Тканина', color: f.color || '', image: f.image || f.macroImage || '',
+  }));
+  if (rich.length) return rich.slice(0, 5);
+  return colors.filter(Boolean).slice(0, 5).map((c) => ({ name: String(c), color: String(c), image: '' }));
+}
+
 export default function ProductCard({ product, dark = false }) {
   const { has, toggle } = useWishlist();
   const inWishlist = has(product.id);
@@ -24,8 +34,9 @@ export default function ProductCard({ product, dark = false }) {
   const [imageIndex, setImageIndex] = useState(0);
   const activeImage = images[imageIndex] || images[0];
   const hasGallery = images.length > 1;
-  const saving = product.oldPrice > product.price ? product.oldPrice - product.price : 0;
   const title = cleanName(product.name);
+  const swatches = useMemo(() => fabricVisuals(product), [product]);
+  const availability = product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення';
 
   const goToImage = (step) => {
     if (!hasGallery) return;
@@ -33,133 +44,44 @@ export default function ProductCard({ product, dark = false }) {
   };
 
   return (
-    <article className={`group ${dark ? 'text-milk' : 'text-espresso'}`}>
-      <div className={`relative overflow-hidden ${dark ? 'bg-espresso-soft' : 'bg-[#F2ECE5]'} aspect-[4/5]`}>
-        <Link
-          to={`/product/${product.slug}`}
-          onClick={() => track('select_item', { items: [buildItem(product)] })}
-          className="block h-full"
-        >
-          <Image
-            src={activeImage}
-            alt={product.imageAlt || product.name}
-            className="w-full h-full object-cover transition-transform duration-[1000ms] ease-out group-hover:scale-[1.025]"
-          />
+    <article className={`product-card-shell group ${dark ? 'text-milk' : 'text-espresso'}`}>
+      <div className="product-card-media relative overflow-hidden">
+        <Link to={`/product/${product.slug}`} onClick={() => track('select_item', { items: [buildItem(product)] })} className="block h-full" data-tap-target="true">
+          <Image src={activeImage} alt={product.imageAlt || product.name} width="800" height="1000" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.018]" />
         </Link>
 
-        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-start justify-between gap-3 pointer-events-none">
-          <div className="flex flex-wrap gap-2">
-            {product.salePercent > 0 && (
-              <span className="bg-espresso text-milk px-3 py-2 text-[10px] leading-none tracking-[0.18em] uppercase font-semibold">
-                −{product.salePercent}%
-              </span>
-            )}
-            {product.availability === 'in_stock' && (
-              <span className="bg-milk/90 text-espresso px-3 py-2 text-[9px] leading-none tracking-[0.14em] uppercase font-semibold backdrop-blur-md">
-                В наявності
-              </span>
-            )}
+        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 pointer-events-none">
+          <div className="flex flex-col items-start gap-1.5 max-w-[72%]">
+            <span className="product-status-badge">{availability}</span>
+            {product.salePercent > 0 && <span className="product-status-badge">−{product.salePercent}%</span>}
           </div>
-
-          <div className="pointer-events-auto flex flex-col gap-2">
-            <button
-              type="button"
-              aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'}
-              onClick={(e) => {
-                e.preventDefault(); e.stopPropagation();
-                toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0] });
-                track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] });
-              }}
-              className="w-10 h-10 bg-milk/92 backdrop-blur-md flex items-center justify-center text-espresso transition-transform hover:scale-105"
-            ><Heart className="w-[17px] h-[17px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
-            <button type="button" aria-label="Порівняти" onClick={(e)=>{e.preventDefault();e.stopPropagation();compare.toggle(product);track(inCompare?'compare_remove':'compare_add',{item_id:product.sku});}} className={`w-10 h-10 backdrop-blur-md flex items-center justify-center transition-transform hover:scale-105 ${inCompare ? 'bg-espresso text-milk' : 'bg-milk/92 text-espresso'}`}><GitCompare className="w-[17px] h-[17px]" strokeWidth={1.45}/></button>
+          <div className="pointer-events-auto flex gap-2">
+            <button type="button" aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: images[0] }); track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] }); }} className="ui-radius-sm w-11 h-11 bg-milk/95 backdrop-blur-md flex items-center justify-center text-espresso"><Heart className="w-[18px] h-[18px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
+            <button type="button" aria-label="Порівняти" onClick={(e)=>{e.preventDefault();e.stopPropagation();compare.toggle(product);track(inCompare?'compare_remove':'compare_add',{item_id:product.sku});}} className={`ui-radius-sm w-11 h-11 backdrop-blur-md flex items-center justify-center ${inCompare ? 'bg-espresso text-milk' : 'bg-milk/95 text-espresso'}`}><GitCompare className="w-[18px] h-[18px]" strokeWidth={1.45}/></button>
           </div>
         </div>
 
-        {hasGallery && (
-          <>
-            <button
-              type="button"
-              aria-label="Попереднє фото"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(-1); }}
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-milk/90 text-espresso backdrop-blur-md flex items-center justify-center transition-all md:opacity-0 md:-translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0"
-            >
-              <ChevronLeft className="w-4 h-4" strokeWidth={1.4} />
-            </button>
-            <button
-              type="button"
-              aria-label="Наступне фото"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(1); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-milk/90 text-espresso backdrop-blur-md flex items-center justify-center transition-all md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0"
-            >
-              <ChevronRight className="w-4 h-4" strokeWidth={1.4} />
-            </button>
-            <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 rounded-full bg-espresso/70 backdrop-blur-md px-3 py-2 flex items-center gap-1.5">
-              {images.slice(0, 5).map((_, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  aria-label={`Фото ${idx + 1}`}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setImageIndex(idx); }}
-                  className={`h-1 rounded-full transition-all ${imageIndex === idx ? 'w-4 bg-milk' : 'w-1 bg-milk/55'}`}
-                />
-              ))}
-              {images.length > 5 && <span className="ml-0.5 text-[9px] text-milk/80">+{images.length - 5}</span>}
-            </div>
-          </>
-        )}
+        {hasGallery && <>
+          <button type="button" aria-label="Попереднє фото" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(-1); }} className="ui-radius-sm absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 bg-milk/92 text-espresso flex items-center justify-center md:opacity-0 md:group-hover:opacity-100"><ChevronLeft className="w-4 h-4" /></button>
+          <button type="button" aria-label="Наступне фото" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(1); }} className="ui-radius-sm absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 bg-milk/92 text-espresso flex items-center justify-center md:opacity-0 md:group-hover:opacity-100"><ChevronRight className="w-4 h-4" /></button>
+        </>}
       </div>
 
-      <div className="pt-4 md:pt-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className={`text-[9px] uppercase tracking-[0.2em] font-semibold ${dark ? 'text-milk/50' : 'text-mocha/70'}`}>
-              DOMERA COLLECTION
-            </p>
-            <Link to={`/product/${product.slug}`} className="block mt-1.5">
-              <h3 className={`font-heading text-[24px] md:text-[26px] leading-none tracking-[-0.015em] ${dark ? 'text-milk' : 'text-espresso'} transition-opacity group-hover:opacity-70`}>
-                {title}
-              </h3>
-            </Link>
-          </div>
-          {product.reviewsCount > 0 && (
-            <span className={`pt-0.5 text-[11px] whitespace-nowrap ${dark ? 'text-milk/55' : 'text-mocha'}`}>
-              ★ {product.rating || 5}
-            </span>
-          )}
+      <div className="p-3.5 md:p-5">
+        <Link to={`/product/${product.slug}`} className="block" data-tap-target="true">
+          <h3 className="font-heading text-[22px] md:text-[25px] leading-[1.08] text-espresso">{title}</h3>
+        </Link>
+        {product.reviewsCount > 0 && <div className="mt-2 text-[13px] text-mocha">★ {product.rating || 5} · {product.reviewsCount}</div>}
+
+        <div className="mt-3 flex items-baseline flex-wrap gap-x-2">
+          <span className="product-card-price font-heading text-espresso">{Number(product.price || 0).toLocaleString('uk-UA')} ₴</span>
+          {product.oldPrice > product.price && <span className="text-[13px] line-through text-mocha">{Number(product.oldPrice).toLocaleString('uk-UA')} ₴</span>}
         </div>
 
-        <div className="mt-4 flex items-end justify-between gap-4 border-t border-espresso/10 pt-4">
-          <div>
-            <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
-              <span className={`font-heading text-[27px] md:text-[29px] leading-none font-medium ${dark ? 'text-milk' : 'text-espresso'}`}>
-                {Number(product.price || 0).toLocaleString('uk-UA')} ₴
-              </span>
-              {product.oldPrice > 0 && (
-                <span className={`text-[12px] line-through ${dark ? 'text-milk/40' : 'text-mocha/60'}`}>
-                  {Number(product.oldPrice).toLocaleString('uk-UA')} ₴
-                </span>
-              )}
-            </div>
-            {saving > 0 ? (
-              <p className="mt-1.5 text-[10px] uppercase tracking-[0.12em] text-clay font-semibold">
-                Ви економите {saving.toLocaleString('uk-UA')} ₴
-              </p>
-            ) : (
-              <p className={`mt-1.5 text-[11px] ${dark ? 'text-milk/50' : 'text-mocha'}`}>
-                Доступні різні розміри та тканини
-              </p>
-            )}
-          </div>
-        </div>
+        {swatches.length > 0 && <div className="mt-3"><p className="text-[13px] text-mocha mb-2">Тканини / кольори</p><div className="flex gap-2" aria-label="Доступні кольори тканини">{swatches.map((s, i) => <span key={`${s.name}-${i}`} title={s.name} className="fabric-dot" style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: 'cover' } : { background: s.color }} />)}</div></div>}
 
-        <Link
-          to={`/product/${product.slug}`}
-          onClick={() => track('select_item', { items: [buildItem(product)] })}
-          className={`mt-4 group/cta inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.17em] font-semibold border-b pb-1 ${dark ? 'border-milk/40 text-milk' : 'border-espresso/35 text-espresso'} hover:border-current transition-colors`}
-        >
-          <span>Переглянути модель</span>
-          <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5" strokeWidth={1.5} />
+        <Link to={`/product/${product.slug}`} onClick={() => track('select_item', { items: [buildItem(product)] })} className="ui-action ui-radius-sm mt-4 w-full inline-flex items-center justify-center gap-2 px-4 text-[13px] uppercase tracking-[0.12em] font-semibold" data-tap-target="true">
+          <span>Купити</span><ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
         </Link>
       </div>
     </article>
