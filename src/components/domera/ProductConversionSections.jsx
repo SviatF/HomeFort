@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ArrowRight, Check, Clock3, CreditCard, MessageCircle, ShieldCheck, Star, Truck } from 'lucide-react';
 import { Image } from '@/components/ui/image';
 import { Link } from '@/lib/router';
@@ -57,7 +58,7 @@ export function PurchaseSummary({ size, fabric, lifting, mattress, mattresses = 
   ].filter(Boolean);
 
   return (
-    <div className="mt-7 bg-[#F3EEE7] border border-espresso/8 p-5">
+    <div className="mt-7 bg-ivory border border-espresso/8 p-5">
       <div className="flex items-center justify-between gap-5 mb-4">
         <div>
           <p className="text-[10px] tracking-[0.22em] uppercase text-mocha">Ваша комплектація</p>
@@ -142,16 +143,46 @@ export function CompareModels({ products = [] }) {
   );
 }
 
-export function StickyBuyBar({ product, price, size, onBuy, onQuickBuy }) {
+export function DeliveryFitCard({ product }) {
+  const values = [
+    ['Габарити', product?.dimensions],
+    ['Ширина', product?.externalWidth],
+    ['Довжина', product?.externalLength],
+    ['Висота узголів’я', product?.headboardHeight],
+    ['Вага', product?.weight],
+  ].filter(([, value]) => value);
+  if (!values.length && !product?.technicalDrawing) return null;
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 bg-milk/95 backdrop-blur-xl border-t border-espresso/10 shadow-[0_-12px_40px_rgba(49,36,27,0.08)] px-4 md:px-8 py-3">
-      <div className="mx-auto max-w-[1440px] flex items-center gap-4 md:gap-7">
-        <div className="hidden sm:block min-w-0 flex-1">
-          <p className="text-[9px] tracking-[0.22em] uppercase text-mocha truncate">{size ? `${product.name} · ${size}` : product.name}</p>
-          <p className="font-heading text-xl md:text-2xl text-espresso">{money(price)} ₴</p>
+    <div className="delivery-fit-card mt-6">
+      <p className="text-[13px] uppercase tracking-[0.12em] text-mocha">Габарити та занесення</p>
+      <div className="mt-3 grid sm:grid-cols-2 gap-4 items-start">
+        {product?.technicalDrawing && <Image src={product.technicalDrawing} alt={`Габаритне креслення ${product.name}`} className="w-full aspect-[4/3] object-contain bg-milk ui-radius-sm" />}
+        <div className="space-y-2">
+          {values.map(([label, value]) => <div key={label} className="flex justify-between gap-4 border-b border-espresso/10 pb-2 text-[14px]"><span className="text-mocha">{label}</span><strong className="text-espresso text-right">{value}</strong></div>)}
+          <p className="pt-2 text-[14px] text-espresso font-semibold">Чи пройде у під’їзд?</p>
+          <p className="text-[13px] text-mocha">Звірте ширину найвужчого проходу, дверей і сходового майданчика з габаритами вище. Якщо сумніваєтесь — надішліть заміри менеджеру.</p>
         </div>
-        <button onClick={onQuickBuy} className="hidden md:block px-6 py-3 border border-espresso/20 text-[10px] tracking-[0.18em] uppercase text-espresso hover:border-espresso transition-colors">Купити в 1 клік</button>
-        <button onClick={onBuy} className="flex-1 sm:flex-none sm:min-w-[260px] group py-3.5 px-6 bg-espresso text-milk text-[11px] tracking-[0.22em] uppercase flex items-center justify-center gap-2">Додати в кошик <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={1.4} /></button>
+      </div>
+    </div>
+  );
+}
+
+export function StickyBuyBar({ product, price, size, onBuy, onQuickBuy }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const update = () => setVisible(window.scrollY > 200);
+    update(); window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+  return (
+    <div data-visible={visible ? 'true' : 'false'} className="mobile-sticky-buy fixed bottom-0 inset-x-0 z-40 bg-milk/95 backdrop-blur-xl border-t border-espresso/10 px-3 md:px-8 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
+      <div className="mx-auto max-w-[1440px] flex items-center gap-3 md:gap-7">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-mocha truncate">{size ? `${size} · ${product.name}` : product.name}</p>
+          <p className="font-heading text-[24px] md:text-2xl font-extrabold text-espresso">{money(price)} ₴</p>
+        </div>
+        <button type="button" onClick={onQuickBuy} className="hidden md:block px-6 py-3 border border-espresso/20 ui-radius-sm text-[13px] uppercase text-espresso">В 1 клік</button>
+        <button type="button" onClick={onBuy} className="ui-action ui-radius-sm min-w-[132px] sm:min-w-[240px] px-4 md:px-6 text-[13px] uppercase tracking-[0.1em] flex items-center justify-center gap-2">Купити <ArrowRight className="w-4 h-4" strokeWidth={1.4} /></button>
       </div>
     </div>
   );
@@ -159,7 +190,7 @@ export function StickyBuyBar({ product, price, size, onBuy, onQuickBuy }) {
 
 export function FloatingConsultation({ onClick }) {
   return (
-    <button onClick={onClick} className="fixed right-4 md:right-7 bottom-[88px] md:bottom-[92px] z-30 bg-[#F3EEE7] border border-espresso/15 shadow-elevated px-4 py-3 flex items-center gap-3 hover:bg-milk transition-colors">
+    <button onClick={onClick} className="fixed right-4 md:right-7 bottom-[88px] md:bottom-[92px] z-30 bg-ivory border border-espresso/15 shadow-elevated px-4 py-3 flex items-center gap-3 hover:bg-milk transition-colors">
       <span className="w-9 h-9 bg-espresso text-milk flex items-center justify-center rounded-full"><MessageCircle className="w-4 h-4" strokeWidth={1.5} /></span>
       <span className="hidden sm:block text-left"><span className="block text-[9px] tracking-[0.18em] uppercase text-mocha">Потрібна допомога?</span><span className="block text-xs text-espresso mt-0.5">Підберемо розмір і тканину</span></span>
     </button>

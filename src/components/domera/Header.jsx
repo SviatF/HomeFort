@@ -117,7 +117,7 @@ export default function Header({ dark = false }) {
               <button aria-label="Акаунт" className={`hidden sm:block ${hover} transition-colors`}><User className="w-[18px] h-[18px]" strokeWidth={1.5} /></button>
               <button aria-label="Кошик" onClick={open} className={`relative ${hover} transition-colors`}>
                 <ShoppingBag className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full ${badge} text-[9px] flex items-center justify-center font-medium`}>{count}</span>
+                <span key={count} className={`cart-count-pop absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full ${badge} text-[13px] flex items-center justify-center font-medium`}>{count}</span>
               </button>
               <button aria-label="Меню" onClick={() => setMobile(true)} className="lg:hidden ml-1">
                 <Menu className="w-6 h-6" strokeWidth={1.5} />

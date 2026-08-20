@@ -142,6 +142,16 @@ export default function Catalog({ initialProducts = null, initialCategory = null
       };
 
   useEffect(() => {
+    if (loading || typeof window === 'undefined') return;
+    try {
+      const key = `domera-scroll:${window.location.pathname}`;
+      const saved = Number(sessionStorage.getItem(key) || 0);
+      if (saved > 0) requestAnimationFrame(() => window.scrollTo({ top: saved, behavior: 'auto' }));
+      sessionStorage.removeItem(key);
+    } catch {}
+  }, [loading, category, size]);
+
+  useEffect(() => {
     if (!loading && all.length) {
       track('view_item_list', {
         item_list_id: size ? `${category}-${sizeToSlug(size)}` : category,
@@ -327,9 +337,9 @@ export default function Catalog({ initialProducts = null, initialCategory = null
                     .filter(([, item]) => item.priority === 1)
                     .slice(0, 9)
                     .map(([slug, item]) => (
-                      <Link key={slug} to={`/catalog/beds/${slug}`} className="text-[12px] text-espresso border-b border-espresso/20 hover:border-espresso transition-colors pb-0.5">
+                      <a key={slug} href={`/catalog/beds/${slug}`} className="text-[13px] text-espresso border-b border-espresso/20 hover:border-espresso transition-colors pb-0.5">
                         {item.h1}
-                      </Link>
+                      </a>
                     ))}
                 </div>
               </div>
@@ -358,8 +368,8 @@ export default function Catalog({ initialProducts = null, initialCategory = null
             </aside>
             <div>
               {loading ? (
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-5 md:gap-x-7 gap-y-12 md:gap-y-16">
-                  {[...Array(6)].map((_, i) => <div key={i} className="aspect-[4/5] bg-sand animate-pulse" />)}
+                <div className="catalog-grid grid grid-cols-2 xl:grid-cols-3 gap-x-5 md:gap-x-7 gap-y-12 md:gap-y-16">
+                  {[...Array(6)].map((_, i) => <div key={i} className="aspect-[4/5] skeleton" />)}
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="py-24 text-center border-y border-espresso/10">
@@ -368,7 +378,7 @@ export default function Catalog({ initialProducts = null, initialCategory = null
                   <button onClick={resetFilters} className="mt-6 text-[10px] uppercase tracking-[0.16em] border-b border-espresso/40 pb-1 text-espresso">Скинути фільтри</button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-5 md:gap-x-7 gap-y-12 md:gap-y-16">
+                <div className="catalog-grid grid grid-cols-2 xl:grid-cols-3 gap-x-5 md:gap-x-7 gap-y-12 md:gap-y-16">
                   {filtered.map((p) => <ProductCard key={p.id || p.slug} product={p} />)}
                 </div>
               )}
@@ -397,6 +407,11 @@ export default function Catalog({ initialProducts = null, initialCategory = null
       </main>
       <Footer />
 
+      <div className="catalog-mobile-toolbar" aria-label="Фільтри та сортування">
+        <button type="button" onClick={() => setMobileFilters(true)} className="ui-action flex items-center justify-center gap-2 text-[13px] uppercase"><SlidersHorizontal className="w-4 h-4" />Фільтри{hasActiveFilters ? ' · активні' : ''}</button>
+        <label className="ui-radius-sm border border-espresso/15 bg-milk px-2 flex items-center"><span className="sr-only">Сортування</span><select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full min-h-12 bg-transparent text-[13px] text-espresso outline-none">{sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+      </div>
+
       <div className={`fixed inset-0 z-[70] transition-all duration-300 ${mobileFilters ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
         <div className="absolute inset-0 bg-espresso/45 backdrop-blur-[2px]" onClick={() => setMobileFilters(false)} />
         <div className={`absolute bottom-0 left-0 right-0 lg:left-auto lg:top-0 lg:w-[420px] max-h-[88vh] lg:max-h-none lg:h-full bg-milk rounded-t-2xl lg:rounded-none p-6 md:p-8 overflow-y-auto transition-transform duration-300 ${mobileFilters ? 'translate-y-0 lg:translate-x-0' : 'translate-y-full lg:translate-y-0 lg:translate-x-full'}`}>
@@ -405,7 +420,7 @@ export default function Catalog({ initialProducts = null, initialCategory = null
             <button onClick={() => setMobileFilters(false)}><X className="w-6 h-6 text-espresso" strokeWidth={1.4} /></button>
           </div>
           <Filters />
-          <button onClick={() => setMobileFilters(false)} className="mt-8 w-full py-4 bg-espresso text-milk text-[11px] tracking-[0.18em] uppercase">Показати {filtered.length} моделей</button>
+          <button onClick={() => setMobileFilters(false)} className="ui-action ui-radius-sm sticky bottom-0 mt-8 w-full py-4 text-[13px] tracking-[0.12em] uppercase">Показати {filtered.length} моделей</button>
         </div>
       </div>
     </div>

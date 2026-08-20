@@ -5,7 +5,7 @@ import { Heart, ChevronLeft, ChevronRight, ArrowUpRight, GitCompare } from 'luci
 import { track, buildItem } from '@/lib/analytics';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useCompare } from '@/lib/CompareContext';
-import { Image } from '@/components/ui/image';
+import ProductImage from '@/components/domera/ProductImage';
 
 function cleanName(name = '') {
   return String(name)
@@ -38,6 +38,10 @@ export default function ProductCard({ product, dark = false }) {
   const swatches = useMemo(() => fabricVisuals(product), [product]);
   const availability = product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення';
 
+  const rememberScroll = () => {
+    try { sessionStorage.setItem(`domera-scroll:${window.location.pathname}`, String(window.scrollY)); } catch {}
+  };
+
   const goToImage = (step) => {
     if (!hasGallery) return;
     setImageIndex((current) => (current + step + images.length) % images.length);
@@ -46,8 +50,8 @@ export default function ProductCard({ product, dark = false }) {
   return (
     <article className={`product-card-shell group ${dark ? 'text-milk' : 'text-espresso'}`}>
       <div className="product-card-media relative overflow-hidden">
-        <Link to={`/product/${product.slug}`} onClick={() => track('select_item', { items: [buildItem(product)] })} className="block h-full" data-tap-target="true">
-          <Image src={activeImage} alt={product.imageAlt || product.name} width="800" height="1000" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.018]" />
+        <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem(product)] }); }} className="block h-full" data-tap-target="true">
+          <ProductImage src={activeImage} alt={product.imageAlt || product.name} sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 28vw" quality={60} className="w-full h-full transition-transform duration-500 ease-out group-hover:scale-[1.018]" />
         </Link>
 
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 pointer-events-none">
@@ -80,7 +84,7 @@ export default function ProductCard({ product, dark = false }) {
 
         {swatches.length > 0 && <div className="mt-3"><p className="text-[13px] text-mocha mb-2">Тканини / кольори</p><div className="flex gap-2" aria-label="Доступні кольори тканини">{swatches.map((s, i) => <span key={`${s.name}-${i}`} title={s.name} className="fabric-dot" style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: 'cover' } : { background: s.color }} />)}</div></div>}
 
-        <Link to={`/product/${product.slug}`} onClick={() => track('select_item', { items: [buildItem(product)] })} className="ui-action ui-radius-sm mt-4 w-full inline-flex items-center justify-center gap-2 px-4 text-[13px] uppercase tracking-[0.12em] font-semibold" data-tap-target="true">
+        <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem(product)] }); }} className="ui-action ui-radius-sm mt-4 w-full inline-flex items-center justify-center gap-2 px-4 text-[13px] uppercase tracking-[0.12em] font-semibold" data-tap-target="true">
           <span>Купити</span><ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
         </Link>
       </div>
