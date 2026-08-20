@@ -10,7 +10,7 @@ const money = (value = 0) => Number(value || 0).toLocaleString('uk-UA');
 export function ProductBenefits({ product }) {
   const benefits = [
     product?.material ? { title: 'Матеріали', value: product.material } : { title: 'Комфорт', value: 'М’яке узголів’я та продумана посадка' },
-    product?.warranty ? { title: 'Гарантія', value: product.warranty } : { title: 'Гарантія', value: 'Офіційна гарантія DOMERA' },
+    product?.warranty ? { title: 'Гарантія', value: product.warranty } : { title: 'Гарантія', value: 'Умови підтвердить менеджер для обраної комплектації' },
     product?.productionTime ? { title: 'Виготовлення', value: product.productionTime } : { title: 'Вибір', value: 'Розміри та тканини під ваш інтер’єр' },
   ];
 
@@ -43,7 +43,7 @@ export function DeliveryPromise({ product }) {
     <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
       <div className="flex items-center gap-2.5 border border-espresso/10 px-3 py-3 text-xs text-mocha"><Clock3 className="w-4 h-4 text-espresso" strokeWidth={1.5} /><span>{product?.productionTime ? `Виготовлення ${product.productionTime}` : 'Швидке підтвердження замовлення'}</span></div>
       <div className="flex items-center gap-2.5 border border-espresso/10 px-3 py-3 text-xs text-mocha"><Truck className="w-4 h-4 text-espresso" strokeWidth={1.5} /><span>Доставка по Україні</span></div>
-      <div className="flex items-center gap-2.5 border border-espresso/10 px-3 py-3 text-xs text-mocha"><CreditCard className="w-4 h-4 text-espresso" strokeWidth={1.5} /><span>Оплата частинами / при отриманні</span></div>
+      <div className="flex items-center gap-2.5 border border-espresso/10 px-3 py-3 text-xs text-mocha"><CreditCard className="w-4 h-4 text-espresso" strokeWidth={1.5} /><span>Спосіб оплати підтвердимо при оформленні</span></div>
     </div>
   );
 }
@@ -151,16 +151,23 @@ export function DeliveryFitCard({ product }) {
     ['Висота узголів’я', product?.headboardHeight],
     ['Вага', product?.weight],
   ].filter(([, value]) => value);
-  if (!values.length && !product?.technicalDrawing) return null;
+  const hasMeasuredData = values.length > 0 || Boolean(product?.technicalDrawing);
+
   return (
     <div className="delivery-fit-card mt-6">
       <p className="text-[13px] uppercase tracking-[0.12em] text-mocha">Габарити та занесення</p>
-      <div className="mt-3 grid sm:grid-cols-2 gap-4 items-start">
+      <div className={`mt-3 grid ${product?.technicalDrawing ? 'sm:grid-cols-2' : 'grid-cols-1'} gap-4 items-start`}>
         {product?.technicalDrawing && <Image src={product.technicalDrawing} alt={`Габаритне креслення ${product.name}`} className="w-full aspect-[4/3] object-contain bg-milk ui-radius-sm" />}
         <div className="space-y-2">
           {values.map(([label, value]) => <div key={label} className="flex justify-between gap-4 border-b border-espresso/10 pb-2 text-[14px]"><span className="text-mocha">{label}</span><strong className="text-espresso text-right">{value}</strong></div>)}
+          {!hasMeasuredData && (
+            <div className="ui-radius-sm border border-amber/25 bg-amber/5 p-3">
+              <p className="text-[14px] font-semibold text-espresso">Точні зовнішні габарити уточнюються</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-mocha">У каталозі цієї моделі ще немає підтверджених зовнішніх розмірів або креслення. Менеджер надасть заміри саме для обраного спального місця та комплектації.</p>
+            </div>
+          )}
           <p className="pt-2 text-[14px] text-espresso font-semibold">Чи пройде у під’їзд?</p>
-          <p className="text-[13px] text-mocha">Звірте ширину найвужчого проходу, дверей і сходового майданчика з габаритами вище. Якщо сумніваєтесь — надішліть заміри менеджеру.</p>
+          <p className="text-[13px] text-mocha">Звірте ширину найвужчого проходу, дверей і сходового майданчика з підтвердженими габаритами. Якщо даних ще немає — перед оплатою надішліть менеджеру заміри проходів.</p>
         </div>
       </div>
     </div>
@@ -200,7 +207,7 @@ export function FloatingConsultation({ onClick }) {
 export function ReassuranceRow() {
   return (
     <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2 text-[11px] text-mocha">
-      {[['Безпечна оплата', ShieldCheck], ['Гарантія', Check], ['Оплата при отриманні', CreditCard], ['Допомога з тканиною', MessageCircle]].map(([label, Icon]) => (
+      {[['Безпечне оформлення', ShieldCheck], ['Гарантійні умови', Check], ['Оплата при оформленні', CreditCard], ['Допомога з тканиною', MessageCircle]].map(([label, Icon]) => (
         <div key={label} className="flex items-center gap-2"><Icon className="w-3.5 h-3.5 text-espresso" strokeWidth={1.5} />{label}</div>
       ))}
     </div>
