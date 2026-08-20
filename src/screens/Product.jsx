@@ -92,8 +92,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
 
   const compatibleMattresses = useMemo(() => {
     if (!size) return mattresses;
-    const matched = mattresses.filter((m) => (m.sizes || []).some((s) => sizeMatches(s, size)));
-    return matched.length ? matched : mattresses;
+    return mattresses.filter((m) => (m.sizes || []).some((s) => sizeMatches(s, size)));
   }, [mattresses, size]);
 
   useEffect(() => {
@@ -148,6 +147,10 @@ export default function Product({ initialProduct = null, initialRelated = [], in
     if (queryFabric && (product.fabrics || []).some((f) => (typeof f === 'string' ? f : f?.name) === queryFabric)) setFabric(queryFabric);
     if (queryLift === '1') setLifting(true);
   }, [product?.id]);
+
+  useEffect(() => {
+    if (mattress && !compatibleMattresses.some((m) => m.id === mattress)) setMattress(null);
+  }, [size, compatibleMattresses, mattress]);
 
   useEffect(() => {
     if (!product || typeof window === 'undefined') return;
@@ -291,7 +294,7 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                   <span className="text-[13px] text-mocha">{product.rating} · {product.reviewsCount} відгуків</span>
                 </div>
               )}
-              <p className="text-[13px] text-mocha mt-2">Артикул: {buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting })}</p>
+              <p className="hidden md:block text-[13px] text-mocha mt-2">Артикул: {buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting })}</p>
 
               <div className="mt-5 flex items-baseline gap-3">
                 <span className={`font-heading text-4xl font-extrabold text-espresso px-1 -mx-1 ${priceFlash ? 'price-updated' : ''}`}>{livePrice.toLocaleString('uk-UA')} ₴</span>
@@ -305,12 +308,6 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                   {mattress && (() => { const m = mattresses.find((x) => x.id === mattress); return m ? <p key={m.id}>· матрац {m.name} +{m.price.toLocaleString('uk-UA')} ₴</p> : null; })()}
                 </div>
               ) : null}
-
-              <div className="mt-3"><span className="product-status-badge">{product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення'}</span></div>
-
-              <ProductBenefits product={product} />
-              <DeliveryPromise product={product} />
-              <DeliveryEstimator productionTime={product.productionTime} />
 
               {/* Size */}
               {uniqueProductSizes(product.sizes).length > 0 && (
@@ -344,6 +341,9 @@ export default function Product({ initialProduct = null, initialRelated = [], in
                   <button onClick={() => setLead('fabric_sample')} className="mt-3 text-xs text-champagne underline underline-offset-4 hover:text-espresso">Замовити зразки тканини →</button>
                 </>
               )}
+
+              <div className="mt-5"><span className="product-status-badge">{product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення'}</span></div>
+              <div className="hidden md:block"><ProductBenefits product={product} /><DeliveryPromise product={product} /><DeliveryEstimator productionTime={product.productionTime} /></div>
 
               {/* Lifting mechanism (beds) */}
               {isBed && (
