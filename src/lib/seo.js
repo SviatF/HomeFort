@@ -7,8 +7,10 @@ export const stripText = (value = '', max = 160) => String(value).replace(/\s+/g
 export function buildMetadata({ title, description, canonical = '/', image, index = true, type = 'website', keywords = [] }) {
   const url = absoluteUrl(canonical);
   const cleanDescription = stripText(description, 180);
+  const cleanTitle = String(title || '').trim();
+  const metadataTitle = /\bDOMERA\b/i.test(cleanTitle) ? { absolute: cleanTitle } : cleanTitle;
   return {
-    title,
+    title: metadataTitle,
     description: cleanDescription,
     keywords: keywords.length ? keywords : undefined,
     alternates: { canonical: url, languages: { 'uk-UA': url, 'x-default': url } },
@@ -18,17 +20,17 @@ export function buildMetadata({ title, description, canonical = '/', image, inde
       googleBot: { index, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 },
     },
     openGraph: {
-      title,
+      title: cleanTitle,
       description: cleanDescription,
       url,
       siteName: 'DOMERA',
       locale: 'uk_UA',
       type,
-      images: image ? [{ url: absoluteUrl(image), alt: title }] : undefined,
+      images: image ? [{ url: absoluteUrl(image), alt: cleanTitle }] : undefined,
     },
     twitter: {
       card: image ? 'summary_large_image' : 'summary',
-      title,
+      title: cleanTitle,
       description: cleanDescription,
       images: image ? [absoluteUrl(image)] : undefined,
     },
