@@ -16,7 +16,7 @@ const catalog = [
     title: 'Ліжка',
     items: [
       { label: "М'які", to: '/catalog/beds/myaki-lizhka' },
-      { label: 'З підйомним механізмом', to: '/catalog/beds/lizhka-z-pidiomnym-mekhanizmom' },
+      { label: 'З підйомним механізмом', to: '/catalog/beds/lizhka-z-pidyomnym-mehanizmom' },
       { label: 'Двоспальні', to: '/catalog/beds/dvospalni-lizhka' },
       { label: 'Для спальні', to: '/catalog/beds/lizhka-dlya-spalni' },
       { label: 'Сучасні', to: '/catalog/beds/suchasni-lizhka' },
@@ -55,7 +55,7 @@ const navLinks = [
   { label: 'Ліжка', to: '/catalog/beds' },
   { label: 'Матраци', to: '/catalog/mattresses' },
   { label: 'Підбір сну', to: '/quiz' },
-  { label: 'Текстиль', to: '/catalog/textile' },
+  { label: 'Текстиль', to: '/catalog/bedding' },
   { label: 'Для партнерів', to: '/partners' },
   { label: 'Про DOMERA', to: '/#philosophy' },
   { label: 'Контакти', to: '/#footer' },
