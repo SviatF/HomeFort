@@ -1,5 +1,5 @@
 import { filterEntity } from '@/lib/base44-server';
-import { getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
+import { getHomefortBeds } from '@/lib/homefort-static';
 import { BED_SEMANTIC_LANDINGS } from '@/lib/bed-semantic-core';
 import { mergeJournalPosts } from '@/lib/bed-topical-core';
 
@@ -34,10 +34,9 @@ export default async function sitemap() {
     filterEntity('Product', {}),
     filterEntity('Blog', { published: true }),
   ]);
-  const editableBeds = editableProducts.filter((p) => p.category === 'beds');
-  const otherProducts = editableProducts.filter((p) => p.category !== 'beds');
-  const beds = mergeEditableProducts(getHomefortBeds(), editableBeds);
-  const products = [...beds, ...otherProducts].filter((p) => p.slug && p.indexable !== false);
+  const beds = getHomefortBeds().filter((p) => p.indexable !== false);
+  const otherProducts = editableProducts.filter((p) => p.category !== 'beds' && p.slug && p.indexable !== false);
+  const products = [...beds, ...otherProducts];
   const posts = mergeJournalPosts(dynamicPosts);
 
   const sizeSlugs = [...new Set(beds.flatMap((p) => (p.sizes || []).map(sizeSlug)).filter(Boolean))];
