@@ -29,8 +29,7 @@ const organizationLd = {
   '@type': 'Organization',
   name: 'DOMERA',
   url: 'https://domera.shop',
-  description: 'Український бренд продуманого комфорту спальні — ліжка, матраци та текстиль від власного виробництва.',
-  sameAs: ['https://instagram.com/domera.shop'],
+  description: 'DOMERA — магазин товарів для сучасної спальні: ліжка, матраци та текстиль.',
 };
 
 const websiteLd = {
@@ -44,8 +43,8 @@ export default function Home() {
   return (
     <div className="bg-espresso" style={{ overflowX: 'hidden' }}>
       <Seo
-        title="DOMERA — ліжка, матраци та текстиль для спальні | Власне виробництво"
-        description="Український бренд продуманого комфорту спальні. Ліжка, матраци, подушки та текстиль від власного виробництва. Виготовлення 7–10 днів, гарантія до 5 років, доставка по Україні."
+        title="DOMERA — ліжка, матраци та текстиль для спальні"
+        description="Ліжка, матраци, подушки та текстиль для сучасної спальні. Допомагаємо підібрати розмір, комплектацію та рішення для комфортного сну з доставкою по Україні."
         canonical="/"
         jsonLd={[organizationLd, websiteLd]}
       />
