@@ -2,22 +2,30 @@ import 'server-only';
 import fs from 'node:fs';
 import path from 'node:path';
 
-let cache;
+function normalizeProduct(product = {}) {
+  const sourceUrl = String(product.sourceUrl || product.url || '').toLowerCase();
+  const isHomefort = sourceUrl.includes('homefort.ua') || String(product.slug || '').includes('homefort-') || /homefort/i.test(String(product.name || ''));
+  return {
+    ...product,
+    brand: product.brand || (isHomefort ? 'Homefort' : undefined),
+    manufacturer: product.manufacturer || (isHomefort ? 'Homefort' : undefined),
+    seller: product.seller || 'DOMERA',
+  };
+}
 
 function loadPayload() {
-  if (cache) return cache;
   try {
     const file = path.join(process.cwd(), 'public', 'data', 'homefort-beds.json');
-    cache = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (error) {
     console.error('[homefort-static] failed to load catalog', error);
-    cache = { products: [] };
+    return { products: [] };
   }
-  return cache;
 }
 
 export function getHomefortBeds() {
-  return Array.isArray(loadPayload()?.products) ? loadPayload().products : [];
+  const products = Array.isArray(loadPayload()?.products) ? loadPayload().products : [];
+  return products.map(normalizeProduct);
 }
 
 export function getHomefortBedBySlug(slug) {
@@ -25,17 +33,15 @@ export function getHomefortBedBySlug(slug) {
   return getHomefortBeds().find((product) => product.slug === slug) || null;
 }
 
-// For beds, the approved static catalog defines the allow-list. Base44 may override
-// fields for those exact slugs, but stale/incorrect bed records are never exposed.
 export function mergeEditableProducts(staticProducts = [], editableProducts = []) {
   const bySlug = new Map();
   for (const item of staticProducts || []) {
-    if (item?.slug) bySlug.set(item.slug, item);
+    if (item?.slug) bySlug.set(item.slug, normalizeProduct(item));
   }
   for (const item of editableProducts || []) {
     if (!item?.slug || !bySlug.has(item.slug)) continue;
     const fallback = bySlug.get(item.slug) || {};
-    bySlug.set(item.slug, { ...fallback, ...item });
+    bySlug.set(item.slug, normalizeProduct({ ...fallback, ...item }));
   }
   return [...bySlug.values()];
 }
