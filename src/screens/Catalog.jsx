@@ -14,7 +14,7 @@ import Seo from '@/components/Seo';
 import CategoryGuide from '@/components/domera/CategoryGuide';
 
 const fallbackTitles = {
-  beds: { title: 'Ліжка', intro: 'М’які ліжка, моделі з підйомним механізмом та преміум-рішення від власного виробництва DOMERA.' },
+  beds: { title: 'Ліжка', intro: 'М’які ліжка Homefort у каталозі DOMERA: моделі з різними розмірами, комплектаціями та підйомним механізмом.' },
   mattresses: { title: 'Матраци', intro: 'Анатомічні та ортопедичні матраци з незалежним пружинним блоком та memory foam.' },
   toppers: { title: 'Наматрацники', intro: 'Наматрацники, що пом’якшують поверхню та покращують мікроклімат вашого сну.' },
   pillows: { title: 'Подушки', intro: 'Подушки з натуральним наповненням та льняними чохлами для правильної підтримки.' },
@@ -65,17 +65,38 @@ export default function Catalog({ initialProducts = null, initialCategory = null
       setColorsSel([]); setFabricsSel([]); setLiftingSel('any');
       return;
     }
+
     setLoading(true);
-    Promise.all([
-      base44.entities.Product.filter({ category }),
-      base44.entities.Category.filter({ key: category }),
-    ])
-      .then(([prods, cats]) => {
-        setAll(prods || []);
-        setCat((cats || [])[0] || null);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    if (category === 'beds') {
+      fetch('/data/homefort-beds.json', { cache: 'no-store' })
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error('catalog fetch failed')))
+        .then((payload) => {
+          setAll(Array.isArray(payload?.products) ? payload.products : []);
+          setCat({
+            key: 'beds',
+            name: 'Ліжка',
+            h1: 'Ліжка',
+            seoTitle: 'Ліжка купити в Україні — ціни та фото | DOMERA',
+            seoDescription: fallbackTitles.beds.intro,
+            seoIntro: fallbackTitles.beds.intro,
+            canonicalUrl: '/catalog/beds',
+            indexable: true,
+          });
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    } else {
+      Promise.all([
+        base44.entities.Product.filter({ category }),
+        base44.entities.Category.filter({ key: category }),
+      ])
+        .then(([prods, cats]) => {
+          setAll(prods || []);
+          setCat((cats || [])[0] || null);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }
     setSizesSel([]); setMaterialsSel([]); setOnlyStock(false); setPriceMax(60000);
     setColorsSel([]); setFabricsSel([]); setLiftingSel('any');
   }, [category, initialProducts, initialCategory]);
