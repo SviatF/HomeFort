@@ -1,8 +1,25 @@
 export const CURRENCY = 'UAH';
 export const BRAND = 'DOMERA';
 
+function purchaseKey(channel, transactionId) {
+  return `domera_purchase_${channel}_${String(transactionId || '').trim()}`;
+}
+
+function alreadyTrackedPurchase(channel, transactionId) {
+  if (typeof window === 'undefined' || !transactionId) return false;
+  try {
+    const key = purchaseKey(channel, transactionId);
+    if (localStorage.getItem(key)) return true;
+    localStorage.setItem(key, String(Date.now()));
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function track(event, ecommerce = {}) {
   if (typeof window === 'undefined') return;
+  if (event === 'purchase' && ecommerce?.transaction_id && alreadyTrackedPurchase('ga4', ecommerce.transaction_id)) return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event, ecommerce: { currency: CURRENCY, ...ecommerce } });
 }
@@ -50,6 +67,7 @@ export function initMetaPixel(pixelId) {
 
 export function trackMeta(event, data = {}, opts = {}) {
   if (typeof window === 'undefined' || !window.fbq) return;
+  if (event === 'Purchase' && opts.eventId && alreadyTrackedPurchase('meta', opts.eventId)) return;
   if (opts.eventId) {
     window.fbq('track', event, data, { eventID: opts.eventId });
   } else {
