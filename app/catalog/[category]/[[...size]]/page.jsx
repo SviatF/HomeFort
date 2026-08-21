@@ -1,12 +1,12 @@
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import Catalog from '@/screens/Catalog';
 import { filterEntity } from '@/lib/base44-server';
-import { getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
+import { getHomefortBeds } from '@/lib/homefort-static';
 import { buildMetadata, breadcrumbSchema, collectionSchema, faqSchema } from '@/lib/seo';
-import { getBedSemanticLanding, filterProductsForBedLanding } from '@/lib/bed-semantic-core';
+import { BED_SEMANTIC_LANDINGS, getBedSemanticLanding, filterProductsForBedLanding } from '@/lib/bed-semantic-core';
 
 const fallbackTitles = {
-  beds: ['Ліжка', 'М’які ліжка, моделі з підйомним механізмом та преміум-рішення DOMERA. Різні розміри, тканини та комплектації. Доставка по Україні.'],
+  beds: ['Ліжка', 'М’які ліжка Homefort у каталозі DOMERA. Різні розміри, тканини та комплектації. Доставка по Україні.'],
   mattresses: ['Матраци', 'Анатомічні та ортопедичні матраци DOMERA для комфортного сну. Різні розміри та рівні жорсткості.'],
   toppers: ['Наматрацники', 'Наматрацники DOMERA для додаткового комфорту, захисту матраца та покращення мікроклімату сну.'],
   pillows: ['Подушки', 'Подушки DOMERA для правильної підтримки голови та шиї, комфортного й здорового сну.'],
@@ -17,42 +17,75 @@ const fallbackTitles = {
 
 function normalizePart(parts) { return Array.isArray(parts) ? parts[0] : parts || ''; }
 function isSizeSlug(value = '') { return /^\d{2,3}(?:x|х|×)\d{2,3}$/i.test(String(value)); }
-function sizeLabel(value = '') { return String(value).replace(/-/g, '×').replace(/x/gi, '×'); }
+function canonicalSizeSlug(value = '') {
+  const match = String(value).toLowerCase().match(/^(\d{2,3})(?:x|х|×)(\d{2,3})$/i);
+  return match ? `${match[1]}x${match[2]}` : '';
+}
+function sizeLabel(value = '') { return canonicalSizeSlug(value).replace('x', '×'); }
+function normalizeComparableSize(value = '') {
+  const match = String(value).toLowerCase().replace(/см/g, '').match(/(\d{2,3})\s*[×хx]\s*(\d{2,3})/);
+  return match ? `${match[1]}x${match[2]}` : '';
+}
+function availableSizeSlugs(products = []) {
+  return new Set(products.flatMap((p) => (p.sizes || []).map(normalizeComparableSize)).filter(Boolean));
+}
 
 async function getData(category, landing = null) {
+  if (category === 'beds') {
+    const allProducts = getHomefortBeds().filter((p) => p.indexable !== false);
+    const products = landing ? filterProductsForBedLanding(allProducts, landing) : allProducts;
+    const fallback = fallbackTitles.beds;
+    const baseCategory = {
+      key: 'beds',
+      name: 'Ліжка',
+      h1: 'Ліжка',
+      seoTitle: 'Ліжка купити в Україні — ціни та фото | DOMERA',
+      seoDescription: fallback[1],
+      seoIntro: fallback[1],
+      canonicalUrl: '/catalog/beds',
+      indexable: true,
+    };
+    const categoryEntity = landing
+      ? {
+          ...baseCategory,
+          name: landing.h1,
+          h1: landing.h1,
+          seoTitle: landing.title,
+          seoDescription: landing.description,
+          seoIntro: landing.intro,
+          canonicalUrl: `/catalog/beds/${landing.slug || ''}`,
+          faq: landing.faq,
+        }
+      : baseCategory;
+    return { products, categoryEntity, allProducts };
+  }
+
   const [editableProducts, cats] = await Promise.all([
     filterEntity('Product', { category }),
     filterEntity('Category', { key: category }),
   ]);
-  const allProducts = category === 'beds'
-    ? mergeEditableProducts(getHomefortBeds(), editableProducts)
-    : editableProducts;
-  const products = landing ? filterProductsForBedLanding(allProducts, landing) : allProducts;
-  const baseCategory = cats[0] || null;
-  const categoryEntity = landing
-    ? {
-        ...(baseCategory || {}),
-        key: category,
-        name: landing.h1,
-        h1: landing.h1,
-        seoTitle: landing.title,
-        seoDescription: landing.description,
-        seoIntro: landing.intro,
-        canonicalUrl: `/catalog/${category}/${landing.slug || ''}`,
-        faq: landing.faq,
-        indexable: true,
-      }
-    : baseCategory;
-  return { products, categoryEntity, allProducts };
+  const products = landing ? filterProductsForBedLanding(editableProducts, landing) : editableProducts;
+  return { products, categoryEntity: cats[0] || null, allProducts: editableProducts };
 }
 
 function resolveRoute(category, raw = '') {
   const part = normalizePart(raw);
   if (!part) return { size: '', landing: null, unknown: false };
-  if (isSizeSlug(part)) return { size: part, landing: null, unknown: false };
+  if (isSizeSlug(part)) return { size: canonicalSizeSlug(part), rawSize: part, landing: null, unknown: false };
   const landing = category === 'beds' ? getBedSemanticLanding(part) : null;
   if (landing) return { size: '', landing: { ...landing, slug: part }, unknown: false };
   return { size: '', landing: null, unknown: true };
+}
+
+export function generateStaticParams() {
+  const beds = getHomefortBeds().filter((p) => p.indexable !== false);
+  const sizes = [...availableSizeSlugs(beds)];
+  const semantic = Object.keys(BED_SEMANTIC_LANDINGS || {});
+  return [
+    { category: 'beds' },
+    ...sizes.map((size) => ({ category: 'beds', size: [size] })),
+    ...semantic.map((slug) => ({ category: 'beds', size: [slug] })),
+  ];
 }
 
 export async function generateMetadata({ params }) {
@@ -60,8 +93,12 @@ export async function generateMetadata({ params }) {
   const route = resolveRoute(category, rawSize);
   if (route.unknown) return buildMetadata({ title: 'Сторінку не знайдено', description: '', canonical: `/catalog/${category}/${normalizePart(rawSize)}`, index: false });
 
-  const { categoryEntity } = await getData(category, route.landing);
+  const { categoryEntity, allProducts } = await getData(category, route.landing);
   const fallback = fallbackTitles[category] || ['Каталог', 'Каталог товарів DOMERA для комфортної спальні.'];
+
+  if (route.size && !availableSizeSlugs(allProducts).has(route.size)) {
+    return buildMetadata({ title: 'Сторінку не знайдено', description: '', canonical: `/catalog/${category}/${route.size}`, index: false });
+  }
 
   if (route.landing) {
     return buildMetadata({
@@ -99,7 +136,13 @@ export default async function Page({ params }) {
   const route = resolveRoute(category, rawSize);
   if (route.unknown) notFound();
 
+  if (route.size && route.rawSize && route.rawSize !== route.size) {
+    permanentRedirect(`/catalog/${category}/${route.size}`);
+  }
+
   const data = await getData(category, route.landing);
+  if (route.size && !availableSizeSlugs(data.allProducts).has(route.size)) notFound();
+
   const fallback = fallbackTitles[category] || ['Каталог', 'Каталог DOMERA.'];
   const name = route.landing?.h1 || data.categoryEntity?.name || fallback[0];
   const label = route.size ? sizeLabel(route.size) : '';
@@ -111,8 +154,10 @@ export default async function Page({ params }) {
       : `/catalog/${category}`;
 
   const filteredProducts = route.size
-    ? data.products.filter((p) => (p.sizes || []).some((s) => String(s).toLowerCase().replace(/[×хx\sсм]/g, '') === String(label).toLowerCase().replace(/[×хx\sсм]/g, '')))
+    ? data.products.filter((p) => (p.sizes || []).some((s) => normalizeComparableSize(s) === route.size))
     : data.products;
+
+  if (route.size && filteredProducts.length === 0) notFound();
 
   const breadcrumbItems = [
     { name: 'Головна', url: '/' },
