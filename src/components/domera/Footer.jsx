@@ -21,7 +21,7 @@ const linkPaths = {
   'Обране': '/wishlist',
   'Порівняння': '/catalog/beds',
   'Філософія': '/#philosophy',
-  'Власне виробництво': '/#production',
+  'Як ми працюємо': '/#production',
   'Матеріали': '/#materials',
   'Журнал': '/journal',
   'Відгуки': '/#reviews',
@@ -37,7 +37,7 @@ const linkPaths = {
 const cols = [
   { title: 'Каталог', links: ['Ліжка', 'Матраци', 'Наматрацники', 'Подушки', 'Ковдри', 'Постільна білизна', 'Дитячі матраци'] },
   { title: 'Покупцям', links: ['Доставка та оплата', 'Гарантія', 'Відстежити замовлення', 'Trade-In', 'Шоурум', 'Конфігуратор', 'Обране', 'Порівняння'] },
-  { title: 'Про DOMERA', links: ['Філософія', 'Власне виробництво', 'Матеріали', 'Журнал', 'Відгуки', 'Контакти'] },
+  { title: 'Про DOMERA', links: ['Філософія', 'Як ми працюємо', 'Матеріали', 'Журнал', 'Відгуки', 'Контакти'] },
   { title: 'B2B', links: ['Для партнерів', 'Опт', 'Dropshipping', 'Для готелів', 'Для дизайнерів', 'Каталог PDF'] },
 ];
 
@@ -52,9 +52,9 @@ export default function Footer() {
           <div className="lg:col-span-4">
             <div className="mb-6">
               <span className="font-heading text-3xl tracking-[0.22em] font-medium">DOMERA</span>
-              <p className="text-[10px] tracking-[0.28em] mt-2 text-milk/60 font-medium">{settings?.brandDescriptor || 'Ліжка та матраци власного виробництва'}</p>
+              <p className="text-[10px] tracking-[0.28em] mt-2 text-milk/60 font-medium">{settings?.brandDescriptor || 'Ліжка, матраци та текстиль для спальні'}</p>
             </div>
-            <p className="text-milk/75 leading-relaxed max-w-sm">Ліжка, матраци та текстиль нового покоління для вашого комфорту. Власне виробництво, продумані рішення для сну.</p>
+            <p className="text-milk/75 leading-relaxed max-w-sm">Добірка ліжок, матраців і текстилю для сучасної спальні. Допомагаємо підібрати розмір, комплектацію та рішення для комфортного сну.</p>
             <div className="mt-7 space-y-3 text-sm text-milk/85">
               {settings?.phone && <a href={`tel:${settings.phone}`} className="flex items-center gap-3 hover:text-champagne transition-colors"><Phone className="w-4 h-4" strokeWidth={1.5} /> {settings.phone}</a>}
               {settings?.email && <a href={`mailto:${settings.email}`} className="flex items-center gap-3 hover:text-champagne transition-colors"><Mail className="w-4 h-4" strokeWidth={1.5} /> {settings.email}</a>}
