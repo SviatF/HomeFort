@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:webpack": "next build --webpack",
     "start": "next start",
+    "verify:seo": "node scripts/verify-production-seo.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -p ./jsconfig.json --noEmit"
   },
@@ -70,7 +72,7 @@
     "recharts": "^2.15.4",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.3.0",
-    "tailwindcss-animate": "^1.0.7",
+    "tailwindcss-animate": "^1.0.0",
     "three": "^0.171.0",
     "vaul": "^1.1.2",
     "zod": "^3.24.2"
