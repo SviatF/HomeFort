@@ -1,38 +1,33 @@
 import { notFound } from 'next/navigation';
 import Product from '@/screens/Product';
 import { filterEntity } from '@/lib/base44-server';
-import { getHomefortBedBySlug, getHomefortBeds, mergeEditableProducts } from '@/lib/homefort-static';
+import { getHomefortBedBySlug, getHomefortBeds } from '@/lib/homefort-static';
 import { buildMetadata, breadcrumbSchema, productSchema } from '@/lib/seo';
 
 async function getProductData(slug) {
-  const products = await filterEntity('Product', { slug });
-  const editableProduct = products[0] || null;
   const staticProduct = getHomefortBedBySlug(slug);
 
-  if (editableProduct?.category === 'beds' && !staticProduct) {
-    return { product: null, related: [], mattresses: [], crossSell: [] };
+  if (staticProduct) {
+    const allBeds = getHomefortBeds().filter((p) => p.indexable !== false);
+    return {
+      product: staticProduct,
+      related: allBeds.filter((p) => p.slug !== staticProduct.slug).slice(0, 3),
+      mattresses: [],
+      crossSell: [],
+    };
   }
 
-  const product = editableProduct ? { ...(staticProduct || {}), ...editableProduct } : staticProduct;
-  if (!product) return { product: null, related: [], mattresses: [], crossSell: [] };
+  const products = await filterEntity('Product', { slug });
+  const product = products[0] || null;
+  if (!product || product.category === 'beds') return { product: null, related: [], mattresses: [], crossSell: [] };
 
-  const editableRelated = await filterEntity('Product', { category: product.category });
-  const relatedAll = product.category === 'beds'
-    ? mergeEditableProducts(getHomefortBeds(), editableRelated)
-    : editableRelated;
-
-  let mattresses = [], crossSell = [];
-  if (product.category === 'beds') {
-    const [mats, tops, bedding, pillows] = await Promise.all([
-      filterEntity('Product', { category: 'mattresses' }),
-      filterEntity('Product', { category: 'toppers' }),
-      filterEntity('Product', { category: 'bedding' }),
-      filterEntity('Product', { category: 'pillows' }),
-    ]);
-    mattresses = mats.slice(0, 4);
-    crossSell = [...mats, ...tops, ...bedding, ...pillows].filter((p) => p.id !== product.id);
-  }
-  return { product, related: relatedAll.filter((p) => p.slug !== product.slug).slice(0, 3), mattresses, crossSell };
+  const relatedAll = await filterEntity('Product', { category: product.category });
+  return {
+    product,
+    related: relatedAll.filter((p) => p.slug !== product.slug).slice(0, 3),
+    mattresses: [],
+    crossSell: [],
+  };
 }
 
 export async function generateMetadata({ params }) {
@@ -41,7 +36,7 @@ export async function generateMetadata({ params }) {
   if (!product) return { title: 'Товар не знайдено', robots: { index: false, follow: false } };
 
   const title = product.seoTitle || `${product.name} — купити від ${Number(product.price || 0).toLocaleString('uk-UA')} ₴`;
-  const description = product.seoDescription || product.shortDescription || product.fullDescription || `${product.name} DOMERA. Ціна від ${Number(product.price || 0).toLocaleString('uk-UA')} ₴. Доставка по Україні.`;
+  const description = product.seoDescription || product.shortDescription || product.fullDescription || `${product.name} у DOMERA. Ціна від ${Number(product.price || 0).toLocaleString('uk-UA')} ₴. Доставка по Україні.`;
   const canonical = product.canonicalUrl || `/product/${product.slug}`;
   const sizeKeywords = (product.sizes || []).slice(0, 6).map((s) => `${product.name} ${s}`);
 
@@ -52,7 +47,7 @@ export async function generateMetadata({ params }) {
     image: product.ogImage || product.images?.[0],
     index: product.indexable !== false,
     type: 'website',
-    keywords: [product.name, 'купити ліжко', 'ліжка DOMERA', ...sizeKeywords],
+    keywords: [product.name, 'купити ліжко', ...sizeKeywords],
   });
 }
 
