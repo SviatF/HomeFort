@@ -76,9 +76,11 @@ export function productSchema(p) {
     price: Number(p.price || 0),
     availability,
     itemCondition: 'https://schema.org/NewCondition',
+    seller: { '@type': 'Organization', name: p.seller || 'DOMERA' },
   };
   if (p.oldPrice > p.price) offer.priceSpecification = { '@type': 'UnitPriceSpecification', price: Number(p.price), priceCurrency: 'UAH' };
 
+  const brandName = p.brand || p.manufacturer || 'DOMERA';
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -90,7 +92,8 @@ export function productSchema(p) {
     sku: p.sku || undefined,
     mpn: p.sku || undefined,
     category: p.category || undefined,
-    brand: { '@type': 'Brand', name: 'DOMERA' },
+    brand: { '@type': 'Brand', name: brandName },
+    manufacturer: p.manufacturer ? { '@type': 'Organization', name: p.manufacturer } : undefined,
     offers: offer,
     aggregateRating: Number(p.reviewsCount) > 0 ? { '@type': 'AggregateRating', ratingValue: Number(p.rating || 5), reviewCount: Number(p.reviewsCount) } : undefined,
   };
@@ -126,7 +129,7 @@ export function websiteSchema() {
       '@id': `${base}/#organization`,
       name: 'DOMERA',
       url: base,
-      description: 'Український бренд ліжок, матраців та текстилю для спальні.',
+      description: 'DOMERA — магазин товарів для спальні: ліжка, матраци та текстиль.',
     },
     {
       '@context': 'https://schema.org',
