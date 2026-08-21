@@ -29,6 +29,26 @@ function normalizeComparableSize(value = '') {
 function availableSizeSlugs(products = []) {
   return new Set(products.flatMap((p) => (p.sizes || []).map(normalizeComparableSize)).filter(Boolean));
 }
+function safeRetailText(value = '') {
+  return String(value || '')
+    .replace(/ціни від виробника/gi, 'актуальні ціни')
+    .replace(/власне виробництво/gi, 'перевірені моделі')
+    .replace(/ліжка DOMERA/gi, 'ліжка у DOMERA')
+    .replace(/ліжко DOMERA/gi, 'ліжко у DOMERA')
+    .replace(/м’які ліжка DOMERA/gi, 'м’які ліжка у DOMERA')
+    .replace(/двоспальні ліжка DOMERA/gi, 'двоспальні ліжка у DOMERA');
+}
+function safeLanding(landing, slug) {
+  if (!landing) return null;
+  return {
+    ...landing,
+    slug,
+    title: safeRetailText(landing.title),
+    description: safeRetailText(landing.description),
+    intro: safeRetailText(landing.intro),
+    faq: (landing.faq || []).map((item) => ({ ...item, a: safeRetailText(item.a) })),
+  };
+}
 
 async function getData(category, landing = null) {
   if (category === 'beds') {
@@ -73,7 +93,7 @@ function resolveRoute(category, raw = '') {
   if (!part) return { size: '', landing: null, unknown: false };
   if (isSizeSlug(part)) return { size: canonicalSizeSlug(part), rawSize: part, landing: null, unknown: false };
   const landing = category === 'beds' ? getBedSemanticLanding(part) : null;
-  if (landing) return { size: '', landing: { ...landing, slug: part }, unknown: false };
+  if (landing) return { size: '', landing: safeLanding(landing, part), unknown: false };
   return { size: '', landing: null, unknown: true };
 }
 
