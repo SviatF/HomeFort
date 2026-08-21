@@ -50,12 +50,8 @@ export default function AdminCatalogSync() {
 
       busy.current = true;
       try {
-        for (const product of upserts) {
-          await mutate({ action: 'upsert', product });
-        }
-        for (const slug of deletes) {
-          await mutate({ action: 'delete', slug });
-        }
+        for (const product of upserts) await mutate({ action: 'upsert', product });
+        for (const slug of deletes) await mutate({ action: 'delete', slug });
 
         if (!cancelled) {
           localStorage.removeItem(STORAGE_KEY);
@@ -63,6 +59,7 @@ export default function AdminCatalogSync() {
           localStorage.removeItem(DELETED_KEY);
           lastFingerprint.current = JSON.stringify({ overrides: {}, extras: [], deleted: [] });
           window.dispatchEvent(new CustomEvent('domera:catalog-synced'));
+          window.setTimeout(() => window.location.reload(), 250);
         }
       } catch (error) {
         console.error('[admin-catalog-sync] sync failed', error);
