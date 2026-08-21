@@ -11,7 +11,7 @@ export function buildItem(p, opts = {}) {
   const item = {
     item_id: opts.variantSKU || p.variantSKU || p.sku || p.id || p.productId,
     item_name: p.name,
-    item_brand: BRAND,
+    item_brand: p.brand || p.manufacturer || BRAND,
     item_category: p.category || '',
     price: Number(opts.price != null ? opts.price : p.price) || 0,
     quantity: opts.quantity || 1,
