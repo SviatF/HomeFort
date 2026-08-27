@@ -1,18 +1,22 @@
 import { notFound, permanentRedirect } from 'next/navigation';
 import Catalog from '@/screens/Catalog';
-import { filterEntity } from '@/lib/base44-server';
-import { getHomefortBeds } from '@/lib/homefort-static';
+import { getHomefortBeds, getHomefortProducts } from '@/lib/homefort-static';
+import { getHomefortFeedCategory, getHomefortFeedCategoryKeys } from '@/lib/homefort-feed-static';
 import { buildMetadata, breadcrumbSchema, collectionSchema, faqSchema } from '@/lib/seo';
 import { BED_SEMANTIC_LANDINGS, getBedSemanticLanding, filterProductsForBedLanding } from '@/lib/bed-semantic-core';
 
 const fallbackTitles = {
   beds: ['Ліжка', 'М’які ліжка Homefort у каталозі DOMERA. Різні розміри, тканини та комплектації. Доставка по Україні.'],
-  mattresses: ['Матраци', 'Анатомічні та ортопедичні матраци DOMERA для комфортного сну. Різні розміри та рівні жорсткості.'],
-  toppers: ['Наматрацники', 'Наматрацники DOMERA для додаткового комфорту, захисту матраца та покращення мікроклімату сну.'],
-  pillows: ['Подушки', 'Подушки DOMERA для правильної підтримки голови та шиї, комфортного й здорового сну.'],
-  duvets: ['Ковдри', 'Легкі та дихаючі ковдри DOMERA для комфортного сну протягом усього року.'],
-  bedding: ['Постільна білизна', 'Постільна білизна DOMERA з натуральних тканин для м’якого, дихаючого та комфортного сну.'],
-  'kids-mattresses': ['Дитячі матраци', 'Дитячі ортопедичні матраци DOMERA з безпечних та гіпоалергенних матеріалів.'],
+  mattresses: ['Матраци', 'Ортопедичні та інші матраци Homefort у каталозі DOMERA. Різні розміри та актуальні ціни.'],
+  toppers: ['Топери та наматрацники', 'Топери та наматрацники Homefort для додаткового комфорту та захисту матраца.'],
+  pillows: ['Подушки', 'Подушки Homefort у каталозі DOMERA: гіпоалергенні та з різними наповнювачами.'],
+  duvets: ['Ковдри', 'Ковдри Homefort для різних сезонів: фото, характеристики та актуальні ціни.'],
+  'kids-mattresses': ['Дитячі матраци', 'Дитячі та підліткові матраци Homefort у каталозі DOMERA.'],
+  furniture: ['Меблі', 'Дивани, стільці, лавки, лофт та інші меблі Homefort.'],
+  parts: ['Комплектуючі', 'Ніжки, механізми, деталі та комплектуючі Homefort.'],
+  accessories: ['Аксесуари', 'Аксесуари Homefort у каталозі DOMERA.'],
+  services: ['Послуги', 'Послуги з каталогу Homefort.'],
+  other: ['Інше', 'Інші товари з каталогу Homefort.'],
 };
 
 function normalizePart(parts) { return Array.isArray(parts) ? parts[0] : parts || ''; }
@@ -51,41 +55,33 @@ function safeLanding(landing, slug) {
 }
 
 async function getData(category, landing = null) {
-  if (category === 'beds') {
-    const allProducts = getHomefortBeds().filter((p) => p.indexable !== false);
-    const products = landing ? filterProductsForBedLanding(allProducts, landing) : allProducts;
-    const fallback = fallbackTitles.beds;
-    const baseCategory = {
-      key: 'beds',
-      name: 'Ліжка',
-      h1: 'Ліжка',
-      seoTitle: 'Ліжка купити в Україні — ціни та фото | DOMERA',
-      seoDescription: fallback[1],
-      seoIntro: fallback[1],
-      canonicalUrl: '/catalog/beds',
-      indexable: true,
-    };
-    const categoryEntity = landing
-      ? {
-          ...baseCategory,
-          name: landing.h1,
-          h1: landing.h1,
-          seoTitle: landing.title,
-          seoDescription: landing.description,
-          seoIntro: landing.intro,
-          canonicalUrl: `/catalog/beds/${landing.slug || ''}`,
-          faq: landing.faq,
-        }
-      : baseCategory;
-    return { products, categoryEntity, allProducts };
-  }
-
-  const [editableProducts, cats] = await Promise.all([
-    filterEntity('Product', { category }),
-    filterEntity('Category', { key: category }),
-  ]);
-  const products = landing ? filterProductsForBedLanding(editableProducts, landing) : editableProducts;
-  return { products, categoryEntity: cats[0] || null, allProducts: editableProducts };
+  const allProducts = getHomefortProducts(category).filter((p) => p.indexable !== false);
+  if (!allProducts.length) return { products: [], categoryEntity: null, allProducts: [] };
+  const products = landing ? filterProductsForBedLanding(allProducts, landing) : allProducts;
+  const fallback = fallbackTitles[category] || ['Каталог', 'Каталог товарів DOMERA.'];
+  const staticCategory = getHomefortFeedCategory(category) || {
+    key: category,
+    name: fallback[0],
+    h1: fallback[0],
+    seoTitle: `${fallback[0]} — купити в Україні | DOMERA`,
+    seoDescription: fallback[1],
+    seoIntro: fallback[1],
+    canonicalUrl: `/catalog/${category}`,
+    indexable: true,
+  };
+  const categoryEntity = landing
+    ? {
+        ...staticCategory,
+        name: landing.h1,
+        h1: landing.h1,
+        seoTitle: landing.title,
+        seoDescription: landing.description,
+        seoIntro: landing.intro,
+        canonicalUrl: `/catalog/beds/${landing.slug || ''}`,
+        faq: landing.faq,
+      }
+    : { ...staticCategory, seoIntro: staticCategory.seoIntro || staticCategory.seoDescription };
+  return { products, categoryEntity, allProducts };
 }
 
 function resolveRoute(category, raw = '') {
@@ -98,11 +94,12 @@ function resolveRoute(category, raw = '') {
 }
 
 export function generateStaticParams() {
+  const categories = getHomefortFeedCategoryKeys();
   const beds = getHomefortBeds().filter((p) => p.indexable !== false);
   const sizes = [...availableSizeSlugs(beds)];
   const semantic = Object.keys(BED_SEMANTIC_LANDINGS || {});
   return [
-    { category: 'beds' },
+    ...categories.map((category) => ({ category })),
     ...sizes.map((size) => ({ category: 'beds', size: [size] })),
     ...semantic.map((slug) => ({ category: 'beds', size: [slug] })),
   ];
@@ -114,7 +111,8 @@ export async function generateMetadata({ params }) {
   if (route.unknown) return buildMetadata({ title: 'Сторінку не знайдено', description: '', canonical: `/catalog/${category}/${normalizePart(rawSize)}`, index: false });
 
   const { categoryEntity, allProducts } = await getData(category, route.landing);
-  const fallback = fallbackTitles[category] || ['Каталог', 'Каталог товарів DOMERA для комфортної спальні.'];
+  if (!categoryEntity || !allProducts.length) return buildMetadata({ title: 'Сторінку не знайдено', description: '', canonical: `/catalog/${category}`, index: false });
+  const fallback = fallbackTitles[category] || ['Каталог', 'Каталог товарів DOMERA.'];
 
   if (route.size && !availableSizeSlugs(allProducts).has(route.size)) {
     return buildMetadata({ title: 'Сторінку не знайдено', description: '', canonical: `/catalog/${category}/${route.size}`, index: false });
@@ -137,7 +135,7 @@ export async function generateMetadata({ params }) {
   const canonical = route.size ? `/catalog/${category}/${route.size}` : (categoryEntity?.canonicalUrl || `/catalog/${category}`);
   const title = route.size
     ? `${name} ${label} — купити в Україні, ціни`
-    : (categoryEntity?.seoTitle || `${name} DOMERA — купити в Україні, ціни`);
+    : (categoryEntity?.seoTitle || `${name} — купити в Україні | DOMERA`);
 
   return buildMetadata({
     title,
@@ -161,6 +159,7 @@ export default async function Page({ params }) {
   }
 
   const data = await getData(category, route.landing);
+  if (!data.categoryEntity || !data.allProducts.length) notFound();
   if (route.size && !availableSizeSlugs(data.allProducts).has(route.size)) notFound();
 
   const fallback = fallbackTitles[category] || ['Каталог', 'Каталог DOMERA.'];
