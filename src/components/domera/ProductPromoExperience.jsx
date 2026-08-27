@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Clock3, Phone, X } from 'lucide-react';
+import { ArrowRight, Clock3, CreditCard, Phone, X } from 'lucide-react';
 import { discountDeadline, discountLabel, discountPercent, formatCountdown, isDiscountActive, oldPrice, popupConfig } from '@/lib/product-promo';
+import { installmentConfig, installmentLabel } from '@/lib/installment';
 
 const money = (value) => Number(value || 0).toLocaleString('uk-UA');
 const POPUP_KEY = 'domera_product_popup_seen_at_v1';
@@ -13,11 +14,20 @@ export function DiscountBadge({ product, compact = false }) {
   return <span className={`${compact ? 'text-[10px] px-2 py-1' : 'text-[11px] px-3 py-1.5'} inline-flex items-center bg-[#C8643B] text-white tracking-[0.12em] uppercase font-semibold`}>{discountLabel(product)}</span>;
 }
 
+export function InstallmentLine({ product, price, compact = false }) {
+  const config = installmentConfig(product, price);
+  if (!config.enabled) return null;
+  return <div className={`${compact ? 'mt-2 text-[12px]' : 'mt-3 text-[13px]'} flex items-start gap-2 text-espresso`}>
+    <span className={`${compact ? 'w-6 h-6' : 'w-7 h-7'} flex-shrink-0 ui-radius-sm bg-ivory border border-espresso/10 flex items-center justify-center`}><CreditCard className={`${compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-[#C8643B]`} strokeWidth={1.6} /></span>
+    <span className="leading-snug"><strong>{installmentLabel(product, price)}</strong>{!config.provider && <span className="block text-[11px] text-mocha mt-0.5">Точні умови та доступність підтвердимо при оформленні.</span>}</span>
+  </div>;
+}
+
 export function DiscountPrice({ product, price, className = '' }) {
   const active=isDiscountActive(product); const old=oldPrice(product); const deadline=discountDeadline(product); const [now,setNow]=useState(Date.now());
   useEffect(()=>{if(!active||!deadline)return undefined;const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer);},[active,deadline]);
   const countdown=active?formatCountdown(deadline,now):'';
-  return <div className={className}><div className="flex items-baseline gap-3 flex-wrap"><span className={`font-heading text-4xl font-extrabold ${active?'text-[#C8643B]':'text-espresso'}`}>{money(price)} ₴</span>{active&&old>price&&<span className="text-lg text-mocha line-through">{money(old)} ₴</span>}{active&&<span className="text-[11px] px-2.5 py-1 bg-[#C8643B]/10 text-[#A34E2F] font-semibold">−{discountPercent(product)}%</span>}</div>{countdown&&<div className="mt-2 inline-flex items-center gap-2 text-[13px] text-[#A34E2F]"><Clock3 className="w-4 h-4"/> Акція діє ще: <strong>{countdown}</strong></div>}</div>;
+  return <div className={className}><div className="flex items-baseline gap-3 flex-wrap"><span className={`font-heading text-4xl font-extrabold ${active?'text-[#C8643B]':'text-espresso'}`}>{money(price)} ₴</span>{active&&old>price&&<span className="text-lg text-mocha line-through">{money(old)} ₴</span>}{active&&<span className="text-[11px] px-2.5 py-1 bg-[#C8643B]/10 text-[#A34E2F] font-semibold">−{discountPercent(product)}%</span>}</div>{countdown&&<div className="mt-2 inline-flex items-center gap-2 text-[13px] text-[#A34E2F]"><Clock3 className="w-4 h-4"/> Акція діє ще: <strong>{countdown}</strong></div>}<InstallmentLine product={product} price={price} /></div>;
 }
 
 export function ConsultationMagnet({ onOpen, emphasis=false, compact=false }) {
