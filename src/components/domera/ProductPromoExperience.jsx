@@ -59,7 +59,7 @@ export function BankInstallmentBlock({ product, price }) {
         </div>
 
         <div className="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1 border-t border-espresso/[0.08] pt-4">
-          <span className="font-heading text-[30px] font-semibold leading-none tracking-[-0.025em] text-espresso sm:text-[34px]">
+          <span className="font-heading text-[27px] font-semibold leading-none tracking-[-0.02em] text-espresso sm:text-[30px]">
             від {money(monthlyFrom)} ₴/міс
           </span>
           {maxMonths > 0 && <span className="pb-0.5 text-[13px] text-mocha">до {maxMonths} платежів</span>}
