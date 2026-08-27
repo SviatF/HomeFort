@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getHomefortFeedProducts, getHomefortFeedCategoryKeys } from '@/lib/homefort-feed-static';
+import { getHomefortLiveProducts, getHomefortLiveCategoryKeys } from '@/lib/homefort-feed-live';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const all = getHomefortFeedProducts();
-  const counts = {};
-  for (const product of all) {
-    const key = product?.category || 'unknown';
-    counts[key] = (counts[key] || 0) + 1;
+  try {
+    const all = await getHomefortLiveProducts();
+    const counts = {};
+    for (const product of all) {
+      const key = product?.category || 'unknown';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return NextResponse.json({ ok: true, total: all.length, categories: await getHomefortLiveCategoryKeys(), counts });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: String(error?.message || error) }, { status: 500 });
   }
-  return NextResponse.json({ total: all.length, categories: getHomefortFeedCategoryKeys(), counts });
 }
