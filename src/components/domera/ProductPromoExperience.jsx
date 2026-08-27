@@ -14,67 +14,49 @@ export function DiscountBadge({ product, compact = false }) {
   return <span className={`${compact ? 'text-[10px] px-2 py-1' : 'text-[11px] px-3 py-1.5'} inline-flex items-center bg-[#C8643B] text-white tracking-[0.12em] uppercase font-semibold`}>{discountLabel(product)}</span>;
 }
 
-function bankTheme(bank) {
-  if (bank.id === 'monobank') return {
-    logo: '/banks/monobank.svg', alt: 'monobank', logoBg: 'bg-[#111111]', logoClass: 'h-[18px] max-w-[88px]',
-    border: 'border-[#111111]/15', bg: 'bg-[#111111]/[0.025]', bar: 'bg-[#111111]', label: 'text-[#5F5F5F]', amount: 'text-[#111111]'
-  };
-  if (bank.id === 'privatbank') return {
-    logo: '/banks/privatbank.svg', alt: 'ПриватБанк', logoBg: 'bg-[#69A82F]', logoClass: 'h-[21px] max-w-[112px]',
-    border: 'border-[#69A82F]/25', bg: 'bg-[#69A82F]/[0.055]', bar: 'bg-[#69A82F]', label: 'text-[#5E7E43]', amount: 'text-[#2F6E1C]'
-  };
-  return {
-    logo: '/banks/pumb.svg', alt: 'ПУМБ', logoBg: 'bg-[#D71920]', logoClass: 'h-[20px] max-w-[88px]',
-    border: 'border-[#D71920]/20', bg: 'bg-[#D71920]/[0.045]', bar: 'bg-[#D71920]', label: 'text-[#A53538]', amount: 'text-[#A10F19]'
-  };
-}
-
-function BankMark({ bank, compact = false }) {
-  const theme = bankTheme(bank);
-  return (
-    <div className={`flex ${compact ? 'h-10' : 'h-11'} shrink-0 items-center justify-center rounded-xl ${theme.logoBg} px-3.5`}>
-      <img src={theme.logo} alt={theme.alt} className={`w-auto ${theme.logoClass}`} loading="lazy" />
-    </div>
-  );
-}
+const BANK_LOGOS = {
+  monobank: { src: '/mono.png', alt: 'monobank', className: 'h-[22px] sm:h-[24px] max-w-[92px]' },
+  privatbank: { src: '/pryvat.png', alt: 'ПриватБанк', className: 'h-[24px] sm:h-[26px] max-w-[118px]' },
+  pumb: { src: '/pymb.png', alt: 'ПУМБ', className: 'h-[23px] sm:h-[25px] max-w-[94px]' },
+};
 
 export function BankInstallmentBlock({ product, price }) {
   const options = bankInstallmentOptions(product, price);
   if (!options.length) return null;
-  const threeBanks = options.length >= 3;
 
-  return <section className="mt-5" aria-label="Оплата частинами">
-    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p className="text-[11px] tracking-[0.18em] uppercase text-mocha">Розстрочка / оплата частинами</p>
-        <p className="mt-1 text-[13px] text-mocha">Оберіть зручний банк при оформленні</p>
+  const monthlyFrom = Math.min(...options.map((bank) => Number(bank.monthly || 0)).filter((value) => value > 0));
+  const maxMonths = Math.max(...options.map((bank) => Number(bank.months || 0)).filter((value) => value > 0));
+
+  return (
+    <section className="mt-5 max-w-[620px]" aria-label="Оплата частинами">
+      <div className="rounded-[16px] border border-espresso/10 bg-white/55 px-4 py-3.5 sm:px-5 sm:py-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3" aria-label="Банки-партнери">
+          {options.map((bank) => {
+            const logo = BANK_LOGOS[bank.id];
+            if (!logo) return null;
+            return (
+              <img
+                key={bank.id}
+                src={logo.src}
+                alt={logo.alt}
+                className={`w-auto object-contain ${logo.className}`}
+                loading="lazy"
+              />
+            );
+          })}
+        </div>
+
+        <div className="mt-3 border-t border-espresso/10 pt-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-mocha">Розстрочка / оплата частинами</p>
+          <p className="mt-1 text-[16px] sm:text-[17px] font-semibold leading-snug text-espresso">
+            від {money(monthlyFrom)} ₴/міс
+            {maxMonths > 0 && <span className="font-normal text-mocha"> · до {maxMonths} платежів</span>}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-mocha">Доступність і ліміт підтверджує обраний банк під час оформлення.</p>
+        </div>
       </div>
-      <span className="hidden text-[11px] text-mocha sm:block">без переходу з товару</span>
-    </div>
-
-    <div className={`grid gap-3 ${threeBanks ? 'grid-cols-1 md:grid-cols-3' : options.length > 1 ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
-      {options.map((bank) => {
-        const theme = bankTheme(bank);
-        return (
-          <div key={bank.id} className={`relative overflow-hidden rounded-[18px] border transition-shadow hover:shadow-sm ${theme.border} ${theme.bg} ${threeBanks ? 'px-3.5 py-4' : 'px-4 py-4'}`}>
-            <span className={`absolute inset-y-0 left-0 w-1 ${theme.bar}`} aria-hidden="true" />
-            <div className={threeBanks ? 'flex flex-col items-start gap-3 pl-1' : 'flex items-center gap-4 pl-1'}>
-              <BankMark bank={bank} compact={threeBanks} />
-              <div className="min-w-0 flex-1">
-                <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${theme.label}`}>Оплата частинами</p>
-                <p className={`mt-1 whitespace-nowrap font-semibold leading-none tracking-[-0.02em] ${theme.amount} ${threeBanks ? 'text-[17px]' : 'text-[19px]'}`}>
-                  від {money(bank.monthly)} ₴/міс
-                </p>
-                <p className="mt-2 text-[12px] text-mocha">до {bank.months} платежів</p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-
-    <p className="mt-3 text-[11px] leading-relaxed text-mocha">Остаточна доступність, кредитний ліміт і умови визначаються банком під час оформлення.</p>
-  </section>;
+    </section>
+  );
 }
 
 export function DiscountPrice({ product, price, className = '' }) {
