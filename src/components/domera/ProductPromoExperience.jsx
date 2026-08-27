@@ -14,35 +14,64 @@ export function DiscountBadge({ product, compact = false }) {
   return <span className={`${compact ? 'text-[10px] px-2 py-1' : 'text-[11px] px-3 py-1.5'} inline-flex items-center bg-[#C8643B] text-white tracking-[0.12em] uppercase font-semibold`}>{discountLabel(product)}</span>;
 }
 
-function BankMark({ bank }) {
-  if (bank.id === 'monobank') {
-    return <div aria-label="monobank" className="min-w-[70px] h-9 px-3 rounded-lg bg-[#111111] text-white flex items-center justify-center font-semibold tracking-[-0.03em] text-[15px]">mono</div>;
-  }
-  return <div aria-label="ПриватБанк" className="min-w-[96px] h-9 px-3 rounded-lg bg-[#69A82F] text-white flex items-center justify-center font-semibold tracking-[-0.03em] text-[13px]">ПриватБанк</div>;
+const BANK_META = {
+  monobank: {
+    name: 'monobank',
+    logo: '/banks/monobank.svg',
+    surface: 'bg-[#F3F3F3]',
+    border: 'border-[#111111]/15',
+    accent: 'bg-[#111111]',
+    amount: 'text-[#111111]',
+    eyebrow: 'text-[#666666]',
+    hover: 'hover:border-[#111111]/35 hover:shadow-[0_10px_30px_rgba(17,17,17,0.08)]',
+  },
+  privatbank: {
+    name: 'ПриватБанк',
+    logo: '/banks/privatbank.svg',
+    surface: 'bg-[#F4F8EF]',
+    border: 'border-[#69A82F]/25',
+    accent: 'bg-[#69A82F]',
+    amount: 'text-[#315A16]',
+    eyebrow: 'text-[#62824D]',
+    hover: 'hover:border-[#69A82F]/55 hover:shadow-[0_10px_30px_rgba(105,168,47,0.10)]',
+  },
+};
+
+function BankInstallmentCard({ bank }) {
+  const meta = BANK_META[bank.id] || BANK_META.monobank;
+  return (
+    <div className={`relative overflow-hidden ui-radius-md border ${meta.border} ${meta.surface} ${meta.hover} transition-all duration-200 min-h-[118px] p-4 md:p-5`}>
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.accent}`} aria-hidden="true" />
+      <div className="flex items-center gap-4">
+        <div className="w-[108px] md:w-[122px] flex-shrink-0">
+          <img src={meta.logo} alt={meta.name} className="block w-full h-auto" loading="lazy" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[10px] md:text-[11px] uppercase tracking-[0.14em] ${meta.eyebrow}`}>Оплата частинами</p>
+          <p className={`mt-1 font-heading text-[22px] md:text-[25px] font-extrabold leading-none ${meta.amount}`}>від {money(bank.monthly)} ₴/міс</p>
+          <p className="mt-2 text-[12px] md:text-[13px] text-mocha">до {bank.months} платежів</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function BankInstallmentBlock({ product, price }) {
   const options = bankInstallmentOptions(product, price);
   if (!options.length) return null;
 
-  return <section className="mt-4" aria-label="Оплата частинами">
-    <div className="flex items-center justify-between gap-4 mb-2.5">
-      <p className="text-[11px] tracking-[0.18em] uppercase text-mocha">Розстрочка / оплата частинами</p>
-      <span className="text-[11px] text-mocha">без переходу з товару</span>
+  return <section className="mt-5" aria-label="Розстрочка та оплата частинами">
+    <div className="flex items-center justify-between gap-4 mb-3">
+      <div>
+        <p className="text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-mocha">Розстрочка / оплата частинами</p>
+        <p className="mt-1 text-[12px] text-mocha">Оберіть зручний банк при оформленні</p>
+      </div>
+      <span className="hidden md:inline text-[11px] text-mocha whitespace-nowrap">без переходу з товару</span>
     </div>
-    <div className={`grid gap-2.5 ${options.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-      {options.map((bank) => (
-        <div key={bank.id} className="ui-radius-md border border-espresso/10 bg-ivory px-4 py-3.5 flex items-center gap-3.5 min-h-[82px]">
-          <BankMark bank={bank} />
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-mocha">Оплата частинами</p>
-            <p className="mt-0.5 text-[15px] font-semibold text-espresso leading-tight">від {money(bank.monthly)} ₴/міс</p>
-            <p className="mt-1 text-[11px] text-mocha">до {bank.months} платежів</p>
-          </div>
-        </div>
-      ))}
+    <div className={`grid gap-3 ${options.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+      {options.map((bank) => <BankInstallmentCard key={bank.id} bank={bank} />)}
     </div>
-    <p className="mt-2 text-[11px] leading-relaxed text-mocha">Остаточна доступність, ліміт і умови банку підтверджуються під час оформлення.</p>
+    <p className="mt-2.5 text-[11px] md:text-[12px] leading-relaxed text-mocha">Остаточна доступність, кредитний ліміт і умови визначаються банком під час оформлення.</p>
   </section>;
 }
 
