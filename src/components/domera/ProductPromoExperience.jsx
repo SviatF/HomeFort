@@ -15,45 +15,57 @@ export function DiscountBadge({ product, compact = false }) {
 }
 
 const BANK_LOGOS = {
-  monobank: { src: '/mono.png', alt: 'monobank', className: 'h-[22px] sm:h-[24px] max-w-[92px]' },
-  privatbank: { src: '/pryvat.png', alt: 'ПриватБанк', className: 'h-[24px] sm:h-[26px] max-w-[118px]' },
-  pumb: { src: '/pymb.png', alt: 'ПУМБ', className: 'h-[23px] sm:h-[25px] max-w-[94px]' },
+  monobank: { src: '/mono.png', alt: 'monobank', className: 'h-[20px] sm:h-[22px] max-w-[84px]' },
+  privatbank: { src: '/pryvat.png', alt: 'ПриватБанк', className: 'h-[22px] sm:h-[24px] max-w-[104px]' },
+  pumb: { src: '/pymb.png', alt: 'ПУМБ', className: 'h-[21px] sm:h-[23px] max-w-[86px]' },
 };
 
 export function BankInstallmentBlock({ product, price }) {
   const options = bankInstallmentOptions(product, price);
   if (!options.length) return null;
 
-  const monthlyFrom = Math.min(...options.map((bank) => Number(bank.monthly || 0)).filter((value) => value > 0));
-  const maxMonths = Math.max(...options.map((bank) => Number(bank.months || 0)).filter((value) => value > 0));
+  const monthlyValues = options.map((bank) => Number(bank.monthly || 0)).filter((value) => value > 0);
+  const monthValues = options.map((bank) => Number(bank.months || 0)).filter((value) => value > 0);
+  const monthlyFrom = monthlyValues.length ? Math.min(...monthlyValues) : 0;
+  const maxMonths = monthValues.length ? Math.max(...monthValues) : 0;
 
   return (
     <section className="mt-5 max-w-[620px]" aria-label="Оплата частинами">
-      <div className="rounded-[16px] border border-espresso/10 bg-white/55 px-4 py-3.5 sm:px-5 sm:py-4">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3" aria-label="Банки-партнери">
-          {options.map((bank) => {
-            const logo = BANK_LOGOS[bank.id];
-            if (!logo) return null;
-            return (
-              <img
-                key={bank.id}
-                src={logo.src}
-                alt={logo.alt}
-                className={`w-auto object-contain ${logo.className}`}
-                loading="lazy"
-              />
-            );
-          })}
+      <div className="relative overflow-hidden rounded-[22px] border border-espresso/[0.09] bg-gradient-to-br from-white/90 via-white/75 to-[#F7F1E9]/80 px-5 py-4.5 shadow-[0_8px_24px_rgba(52,33,18,0.045)] sm:px-6 sm:py-5">
+        <div className="absolute inset-y-0 left-0 w-[3px] bg-[#C8643B]/75" aria-hidden="true" />
+
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A36B4E]">Оплата частинами</p>
+            <p className="mt-1 text-[12px] text-mocha">Mono · ПриватБанк · ПУМБ</p>
+          </div>
+
+          <div className="flex items-center gap-2.5" aria-label="Банки-партнери">
+            {options.map((bank) => {
+              const logo = BANK_LOGOS[bank.id];
+              if (!logo) return null;
+              return (
+                <div key={bank.id} className="flex h-10 min-w-10 items-center justify-center rounded-xl border border-espresso/[0.07] bg-white px-2.5 shadow-[0_3px_10px_rgba(52,33,18,0.035)]">
+                  <img
+                    src={logo.src}
+                    alt={logo.alt}
+                    className={`w-auto object-contain ${logo.className}`}
+                    loading="lazy"
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="mt-3 border-t border-espresso/10 pt-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-mocha">Розстрочка / оплата частинами</p>
-          <p className="mt-1 text-[16px] sm:text-[17px] font-semibold leading-snug text-espresso">
+        <div className="mt-4 flex flex-wrap items-end gap-x-3 gap-y-1 border-t border-espresso/[0.08] pt-4">
+          <span className="font-heading text-[30px] font-semibold leading-none tracking-[-0.025em] text-espresso sm:text-[34px]">
             від {money(monthlyFrom)} ₴/міс
-            {maxMonths > 0 && <span className="font-normal text-mocha"> · до {maxMonths} платежів</span>}
-          </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-mocha">Доступність і ліміт підтверджує обраний банк під час оформлення.</p>
+          </span>
+          {maxMonths > 0 && <span className="pb-0.5 text-[13px] text-mocha">до {maxMonths} платежів</span>}
         </div>
+
+        <p className="mt-2.5 text-[11px] leading-relaxed text-mocha/90">Ліміт і доступність підтверджує банк під час оформлення.</p>
       </div>
     </section>
   );
