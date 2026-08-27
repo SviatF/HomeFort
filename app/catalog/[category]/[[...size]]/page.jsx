@@ -1,9 +1,12 @@
 import { notFound, permanentRedirect } from 'next/navigation';
 import Catalog from '@/screens/Catalog';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
-import { getHomefortLiveCategoryKeys, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
+import { getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { buildMetadata, breadcrumbSchema, collectionSchema, faqSchema } from '@/lib/seo';
 import { BED_SEMANTIC_LANDINGS, getBedSemanticLanding, filterProductsForBedLanding } from '@/lib/bed-semantic-core';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const fallbackTitles = {
   beds: ['Ліжка', 'М’які ліжка Homefort у каталозі DOMERA. Різні розміри, тканини та комплектації. Доставка по Україні.'],
@@ -91,20 +94,6 @@ function resolveRoute(category, raw = '') {
   const landing = category === 'beds' ? getBedSemanticLanding(part) : null;
   if (landing) return { size: '', landing: safeLanding(landing, part), unknown: false };
   return { size: '', landing: null, unknown: true };
-}
-
-export async function generateStaticParams() {
-  const [categories, beds] = await Promise.all([
-    getHomefortLiveCategoryKeys(),
-    getHomefortLiveProducts('beds'),
-  ]);
-  const sizes = [...availableSizeSlugs(beds.filter((p) => p.indexable !== false))];
-  const semantic = Object.keys(BED_SEMANTIC_LANDINGS || {});
-  return [
-    ...categories.map((category) => ({ category })),
-    ...sizes.map((size) => ({ category: 'beds', size: [size] })),
-    ...semantic.map((slug) => ({ category: 'beds', size: [slug] })),
-  ];
 }
 
 export async function generateMetadata({ params }) {
