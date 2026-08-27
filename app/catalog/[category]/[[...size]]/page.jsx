@@ -1,7 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation';
 import Catalog from '@/screens/Catalog';
-import { getHomefortBeds, getHomefortProducts } from '@/lib/homefort-static';
-import { getHomefortFeedCategory, getHomefortFeedCategoryKeys } from '@/lib/homefort-feed-static';
+import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
+import { getHomefortLiveCategoryKeys, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { buildMetadata, breadcrumbSchema, collectionSchema, faqSchema } from '@/lib/seo';
 import { BED_SEMANTIC_LANDINGS, getBedSemanticLanding, filterProductsForBedLanding } from '@/lib/bed-semantic-core';
 
@@ -55,7 +55,7 @@ function safeLanding(landing, slug) {
 }
 
 async function getData(category, landing = null) {
-  const allProducts = getHomefortProducts(category).filter((p) => p.indexable !== false);
+  const allProducts = (await getHomefortLiveProducts(category)).filter((p) => p.indexable !== false);
   if (!allProducts.length) return { products: [], categoryEntity: null, allProducts: [] };
   const products = landing ? filterProductsForBedLanding(allProducts, landing) : allProducts;
   const fallback = fallbackTitles[category] || ['Каталог', 'Каталог товарів DOMERA.'];
@@ -93,10 +93,12 @@ function resolveRoute(category, raw = '') {
   return { size: '', landing: null, unknown: true };
 }
 
-export function generateStaticParams() {
-  const categories = getHomefortFeedCategoryKeys();
-  const beds = getHomefortBeds().filter((p) => p.indexable !== false);
-  const sizes = [...availableSizeSlugs(beds)];
+export async function generateStaticParams() {
+  const [categories, beds] = await Promise.all([
+    getHomefortLiveCategoryKeys(),
+    getHomefortLiveProducts('beds'),
+  ]);
+  const sizes = [...availableSizeSlugs(beds.filter((p) => p.indexable !== false))];
   const semantic = Object.keys(BED_SEMANTIC_LANDINGS || {});
   return [
     ...categories.map((category) => ({ category })),
