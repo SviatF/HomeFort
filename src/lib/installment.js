@@ -13,12 +13,14 @@ export function bankInstallmentOptions(product = {}, price = 0) {
   const legacyMonths = clampMonths(product.installment_months, 6);
   const monoMonths = clampMonths(product.monobank_months, legacyMonths);
   const privatMonths = clampMonths(product.privatbank_months, legacyMonths);
+  const pumbMonths = clampMonths(product.pumb_months, legacyMonths);
 
   // Backward compatibility: products created before bank-specific controls
   // inherit the previous global installment switch until an editor chooses
   // bank-specific availability in the admin panel.
   const monoEnabled = product.monobank_enabled ?? true;
   const privatEnabled = product.privatbank_enabled ?? true;
+  const pumbEnabled = product.pumb_enabled ?? true;
 
   return [
     monoEnabled ? {
@@ -36,6 +38,14 @@ export function bankInstallmentOptions(product = {}, price = 0) {
       months: privatMonths,
       monthly: monthlyAmount(product.privatbank_monthly_from, amount, privatMonths),
       accent: 'privat',
+    } : null,
+    pumbEnabled ? {
+      id: 'pumb',
+      name: 'ПУМБ',
+      shortName: 'ПУМБ',
+      months: pumbMonths,
+      monthly: monthlyAmount(product.pumb_monthly_from, amount, pumbMonths),
+      accent: 'pumb',
     } : null,
   ].filter(Boolean);
 }
