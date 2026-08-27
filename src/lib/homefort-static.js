@@ -1,6 +1,7 @@
 import 'server-only';
 import fs from 'node:fs';
 import path from 'node:path';
+import { getHomefortFeedProducts, getHomefortFeedProductBySlug } from '@/lib/homefort-feed-static';
 
 function resellerSafeText(value = '', isHomefort = false) {
   if (!isHomefort || !value) return value;
@@ -24,25 +25,41 @@ function normalizeProduct(product = {}) {
   };
 }
 
-function loadPayload() {
+function loadCuratedPayload() {
   try {
     const file = path.join(process.cwd(), 'public', 'data', 'homefort-beds.json');
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (error) {
-    console.error('[homefort-static] failed to load catalog', error);
+    console.error('[homefort-static] failed to load curated bed overrides', error);
     return { products: [] };
   }
 }
 
 export function getHomefortBeds() {
-  const payload = loadPayload();
-  const products = Array.isArray(payload?.products) ? payload.products : [];
-  return products.map(normalizeProduct);
+  const feedBeds = getHomefortFeedProducts('beds').map(normalizeProduct);
+  const curated = Array.isArray(loadCuratedPayload()?.products) ? loadCuratedPayload().products : [];
+  const bySlug = new Map(feedBeds.filter((item) => item?.slug).map((item) => [item.slug, item]));
+  for (const item of curated) {
+    if (!item?.slug) continue;
+    const fallback = bySlug.get(item.slug) || {};
+    bySlug.set(item.slug, normalizeProduct({ ...fallback, ...item }));
+  }
+  return [...bySlug.values()];
 }
 
 export function getHomefortBedBySlug(slug) {
   if (!slug) return null;
   return getHomefortBeds().find((product) => product.slug === slug) || null;
+}
+
+export function getHomefortProductBySlug(slug) {
+  if (!slug) return null;
+  return getHomefortBedBySlug(slug) || normalizeProduct(getHomefortFeedProductBySlug(slug) || {});
+}
+
+export function getHomefortProducts(category = null) {
+  if (category === 'beds') return getHomefortBeds();
+  return getHomefortFeedProducts(category).map(normalizeProduct);
 }
 
 export function mergeEditableProducts(staticProducts = [], editableProducts = []) {
