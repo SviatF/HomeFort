@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from '@/lib/router';
-import { Star, Check, Truck, Shield, RotateCcw, ChevronDown, ArrowRight, Heart } from 'lucide-react';
+import { Star, ArrowRight, Heart, Phone } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { track, buildItem, trackMeta } from '@/lib/analytics';
 import { buildVariantSKU, sizeMatches, sizeToSlug } from '@/lib/variant';
@@ -16,299 +16,99 @@ import { useWishlist } from '@/lib/WishlistContext';
 import Seo from '@/components/Seo';
 import LeadModal from '@/components/domera/LeadModal';
 import { Image } from '@/components/ui/image';
-import { ProductBenefits, PriceValueBlock, DeliveryPromise, PurchaseSummary, InteriorGallery, ReviewSummary, CompareModels, StickyBuyBar, FloatingConsultation, ReassuranceRow, DeliveryFitCard } from '@/components/domera/ProductConversionSections';
+import { ProductBenefits, DeliveryPromise, PurchaseSummary, InteriorGallery, ReviewSummary, ReassuranceRow, DeliveryFitCard } from '@/components/domera/ProductConversionSections';
 import { DeliveryEstimator, ShareConfiguration, RecentlyViewedRail } from '@/components/domera/CROPhase2Sections';
 import { useRecentlyViewed } from '@/lib/RecentlyViewedContext';
 import { formatProductDescription } from '@/lib/product-description';
+import { ConsultationMagnet, DiscountBadge, DiscountPrice, TimedProductPopup } from '@/components/domera/ProductPromoExperience';
+import { currentPrice, isDiscountActive, oldPrice } from '@/lib/product-promo';
 
-const CATEGORY_NAMES = {
-  beds: 'Ліжка',
-  mattresses: 'Матраци',
-  toppers: 'Наматрацники',
-  pillows: 'Подушки',
-  duvets: 'Ковдри',
-  bedding: 'Постільна білизна',
-  'kids-mattresses': 'Дитячі матраци',
-};
-
-const normalizeProductSize = (value = '') => {
-  const raw = String(value).trim().toLowerCase().replace(/\s+/g, '');
-  const match = raw.match(/(\d{2,3})\D+(\d{2,3})/);
-  if (!match) return String(value).trim();
-  return `${Number(match[1])}×${Number(match[2])}`;
-};
-
-const uniqueProductSizes = (sizes = []) => {
-  const seen = new Set();
-  return sizes
-    .map(normalizeProductSize)
-    .filter((value) => {
-      if (!value || seen.has(value)) return false;
-      seen.add(value);
-      return true;
-    });
-};
+const CATEGORY_NAMES = { beds: 'Ліжка', mattresses: 'Матраци', toppers: 'Наматрацники', pillows: 'Подушки', duvets: 'Ковдри', bedding: 'Постільна білизна', 'kids-mattresses': 'Дитячі матраци' };
+const normalizeProductSize = (value = '') => { const raw=String(value).trim().toLowerCase().replace(/\s+/g,''); const match=raw.match(/(\d{2,3})\D+(\d{2,3})/); return match ? `${Number(match[1])}×${Number(match[2])}` : String(value).trim(); };
+const uniqueProductSizes = (sizes = []) => { const seen=new Set(); return sizes.map(normalizeProductSize).filter((value)=>{ if(!value||seen.has(value))return false; seen.add(value); return true; }); };
+const fabricName = (f) => typeof f === 'string' ? f : f?.name || f?.label || '';
 
 export default function Product({ initialProduct = null, initialRelated = [], initialMattresses = [], initialCrossSell = [] } = {}) {
   const { slug } = useParams();
-  const [product, setProduct] = useState(initialProduct);
-  const [related, setRelated] = useState(initialRelated);
-  const [loading, setLoading] = useState(!initialProduct);
-  const [activeImg, setActiveImg] = useState(0);
-  const [size, setSize] = useState(normalizeProductSize(initialProduct?.sizes?.[0] || ''));
-  const [color, setColor] = useState(initialProduct?.colors?.[0] || '');
-  const [fabric, setFabric] = useState(initialProduct?.fabrics?.[0] || '');
-  const [qty, setQty] = useState(1);
-  const [tab, setTab] = useState('about');
-  const [lifting, setLifting] = useState(false);
-  const [mattresses, setMattresses] = useState(initialMattresses);
-  const [mattress, setMattress] = useState(null);
-  const [lead, setLead] = useState(null);
-  const [crossSell, setCrossSell] = useState(initialCrossSell);
-  const { add } = useCart();
-  const { has: hasWish, toggle: toggleWish } = useWishlist();
-  const recentlyViewed = useRecentlyViewed();
-  const [priceFlash, setPriceFlash] = useState(false);
+  const [product,setProduct]=useState(initialProduct); const [related,setRelated]=useState(initialRelated); const [loading,setLoading]=useState(!initialProduct); const [activeImg,setActiveImg]=useState(0);
+  const [size,setSize]=useState(normalizeProductSize(initialProduct?.sizes?.[0]||'')); const [color,setColor]=useState(initialProduct?.colors?.[0]||''); const [fabric,setFabric]=useState(fabricName(initialProduct?.fabrics?.[0])||'');
+  const [qty,setQty]=useState(1); const [lifting,setLifting]=useState(false); const [mattresses,setMattresses]=useState(initialMattresses); const [mattress,setMattress]=useState(null); const [lead,setLead]=useState(null); const [crossSell,setCrossSell]=useState(initialCrossSell); const [priceFlash,setPriceFlash]=useState(false);
+  const { add }=useCart(); const { has:hasWish,toggle:toggleWish }=useWishlist(); const recentlyViewed=useRecentlyViewed();
+  const LIFTING_SURCHARGE=2400; const isBed=product?.category==='beds';
+  const basePrice=product?currentPrice(product):0; const baseOld=product?oldPrice(product):null; const discounted=product?isDiscountActive(product):false;
+  const extraPrice=useMemo(()=>{ let extra=isBed&&lifting?LIFTING_SURCHARGE:0; if(mattress){ const m=mattresses.find(x=>x.id===mattress); if(m)extra+=currentPrice(m); } return extra; },[isBed,lifting,mattress,mattresses]);
+  const livePrice=basePrice+extraPrice; const liveOldPrice=discounted&&baseOld?baseOld+extraPrice:null;
+  const promoProduct=product?{...product,price:livePrice,price_current:livePrice,oldPrice:liveOldPrice,price_old:liveOldPrice}:null;
+  const hasDimensions=Boolean(product?.dimensions||product?.externalWidth||product?.externalLength||product?.headboardHeight||product?.technicalDrawing);
 
-  const LIFTING_SURCHARGE = 2400;
-  const isBed = product?.category === 'beds';
-  const livePrice = useMemo(() => {
-    if (!product) return 0;
-    let p = product.price;
-    if (isBed && lifting) p += LIFTING_SURCHARGE;
-    if (mattress) {
-      const m = mattresses.find((x) => x.id === mattress);
-      if (m) p += m.price;
-    }
-    return p;
-  }, [product, isBed, lifting, mattress, mattresses]);
+  const compatibleMattresses=useMemo(()=>{ if(!size)return mattresses; return mattresses.filter(m=>(m.sizes||[]).some(s=>sizeMatches(s,size))); },[mattresses,size]);
+  const premiumAlternatives=useMemo(()=>{ if(!product)return []; const floor=basePrice*0.8; return (related||[]).filter(p=>currentPrice(p)>=floor).sort((a,b)=>Math.abs(currentPrice(a)-basePrice)-Math.abs(currentPrice(b)-basePrice)).slice(0,3); },[related,product?.id,basePrice]);
+  const recommendations=useMemo(()=>{ if(!isBed)return related; if(!size)return crossSell.slice(0,3); const matched=crossSell.filter(p=>(p.sizes||[]).some(s=>sizeMatches(s,size))); return (matched.length?matched:crossSell).slice(0,3); },[isBed,related,crossSell,size]);
 
-  const recommendations = useMemo(() => {
-    if (!isBed) return related;
-    if (!size) return crossSell.slice(0, 3);
-    const matched = crossSell.filter((p) => (p.sizes || []).some((s) => sizeMatches(s, size)));
-    return (matched.length ? matched : crossSell).slice(0, 3);
-  }, [isBed, related, crossSell, size]);
+  useEffect(()=>{
+    if(initialProduct&&initialProduct.slug===slug){ setProduct(initialProduct);setRelated(initialRelated||[]);setMattresses(initialMattresses||[]);setCrossSell(initialCrossSell||[]);setSize(normalizeProductSize(initialProduct.sizes?.[0]||''));setColor(initialProduct.colors?.[0]||'');setFabric(fabricName(initialProduct.fabrics?.[0])||'');setLoading(false);return; }
+    setLoading(true); base44.entities.Product.filter({slug}).then(async(res)=>{ const p=(res||[])[0];setProduct(p);if(p){setSize(normalizeProductSize(p.sizes?.[0]||''));setColor(p.colors?.[0]||'');setFabric(fabricName(p.fabrics?.[0])||'');setActiveImg(0);const rel=await base44.entities.Product.filter({category:p.category});setRelated((rel||[]).filter(r=>r.id!==p.id).slice(0,6));if(p.category==='beds'){const mats=await base44.entities.Product.filter({category:'mattresses'});setMattresses((mats||[]).slice(0,8));}}setMattress(null);setLifting(false);setLoading(false);}).catch(()=>setLoading(false));
+  },[slug,initialProduct,initialRelated,initialMattresses,initialCrossSell]);
 
-  const compatibleMattresses = useMemo(() => {
-    if (!size) return mattresses;
-    return mattresses.filter((m) => (m.sizes || []).some((s) => sizeMatches(s, size)));
-  }, [mattresses, size]);
+  useEffect(()=>{ if(!product||typeof window==='undefined')return; const params=new URLSearchParams(window.location.search);const qs=params.get('size');const qf=params.get('fabric');const ql=params.get('lifting');if(qs&&uniqueProductSizes(product.sizes||[]).some(s=>sizeMatches(s,qs)))setSize(normalizeProductSize(qs));if(qf&&(product.fabrics||[]).some(f=>fabricName(f)===qf))setFabric(qf);if(ql==='1')setLifting(true); },[product?.id]);
+  useEffect(()=>{ if(mattress&&!compatibleMattresses.some(m=>m.id===mattress))setMattress(null); },[size,compatibleMattresses,mattress]);
+  useEffect(()=>{ if(!product||typeof window==='undefined')return;const url=new URL(window.location.href);if(size)url.searchParams.set('size',size);else url.searchParams.delete('size');if(fabric)url.searchParams.set('fabric',fabric);else url.searchParams.delete('fabric');if(lifting)url.searchParams.set('lifting','1');else url.searchParams.delete('lifting');window.history.replaceState({},'',`${url.pathname}${url.search}${url.hash}`); },[product?.id,size,fabric,lifting]);
+  useEffect(()=>{ if(!product)return;setPriceFlash(true);const timer=setTimeout(()=>setPriceFlash(false),200);return()=>clearTimeout(timer); },[livePrice]);
+  useEffect(()=>{ if(product){ recentlyViewed.add(product);track('view_item',{items:[buildItem({...product,price:basePrice},{variantSKU:buildVariantSKU(product.sku,{size,color,fabric,lifting:isBed&&lifting}),size,color,fabric,price:livePrice})]});trackMeta('ViewContent',{currency:'UAH',value:livePrice,content_name:product.name,content_ids:[product.sku],content_type:'product'}); } },[product?.id]);
 
-  useEffect(() => {
-    if (initialProduct && initialProduct.slug === slug) {
-      setProduct(initialProduct);
-      setRelated(initialRelated || []);
-      setMattresses(initialMattresses || []);
-      setCrossSell(initialCrossSell || []);
-      setSize(normalizeProductSize(initialProduct.sizes?.[0] || ''));
-      setColor(initialProduct.colors?.[0] || '');
-      setFabric(initialProduct.fabrics?.[0] || '');
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    base44.entities.Product.filter({ slug })
-      .then(async (res) => {
-        const p = (res || [])[0];
-        setProduct(p);
-        if (p) {
-          setSize(normalizeProductSize(p.sizes?.[0] || ''));
-          setColor(p.colors?.[0] || '');
-          setFabric(p.fabrics?.[0] || '');
-          setActiveImg(0);
-          const rel = await base44.entities.Product.filter({ category: p.category });
-          setRelated((rel || []).filter((r) => r.id !== p.id).slice(0, 3));
-          if (p.category === 'beds') {
-            const [mats, tops, bed, pil] = await Promise.all([
-              base44.entities.Product.filter({ category: 'mattresses' }),
-              base44.entities.Product.filter({ category: 'toppers' }),
-              base44.entities.Product.filter({ category: 'bedding' }),
-              base44.entities.Product.filter({ category: 'pillows' }),
-            ]);
-            setMattresses((mats || []).slice(0, 4));
-            setCrossSell([...(mats || []), ...(tops || []), ...(bed || []), ...(pil || [])].filter((r) => r.id !== p.id));
-          }
-        }
-        setMattress(null);
-        setLifting(false);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [slug, initialProduct, initialRelated, initialMattresses, initialCrossSell]);
+  if(loading)return <div className="bg-milk min-h-screen"><Header/><div className="pt-[120px] mx-auto max-w-[1440px] px-6 lg:px-12"><div className="grid grid-cols-1 lg:grid-cols-2 gap-12"><div className="aspect-[4/5] skeleton"/><div className="space-y-4"><div className="h-10 skeleton"/><div className="h-6 w-1/2 skeleton"/><div className="h-40 skeleton"/></div></div></div></div>;
+  if(!product)return <div className="bg-milk min-h-screen"><Header/><div className="pt-[140px] pb-32 text-center px-6"><h1 className="font-heading text-4xl text-espresso">Товар не знайдено</h1><Link to="/catalog/beds" className="mt-6 inline-block text-mocha underline">Повернутись до каталогу</Link></div><Footer/></div>;
 
-  useEffect(() => {
-    if (!product || typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const querySize = params.get('size');
-    const queryFabric = params.get('fabric');
-    const queryLift = params.get('lifting');
-    if (querySize && uniqueProductSizes(product.sizes || []).some((s) => sizeMatches(s, querySize))) setSize(normalizeProductSize(querySize));
-    if (queryFabric && (product.fabrics || []).some((f) => (typeof f === 'string' ? f : f?.name) === queryFabric)) setFabric(queryFabric);
-    if (queryLift === '1') setLifting(true);
-  }, [product?.id]);
+  const openConsult=(source)=>{track('consultation_open',{item_id:product.sku,source});setLead('consultation');};
+  const handleAdd=()=>{ const bedUnitPrice=basePrice+(isBed&&lifting?LIFTING_SURCHARGE:0);const bedVariantSKU=buildVariantSKU(product.sku,{size,color,fabric,lifting:isBed&&lifting});const items=[buildItem({...product,price:basePrice},{variantSKU:bedVariantSKU,size,color,fabric,quantity:qty,price:bedUnitPrice})];add({productId:product.id,variantSKU:bedVariantSKU,slug:product.slug,name:product.name,price:bedUnitPrice,image:product.images?.[0],size,color,fabric,qty});let value=bedUnitPrice*qty;if(mattress){const m=mattresses.find(x=>x.id===mattress);if(m){const mp=currentPrice(m);const mSKU=buildVariantSKU(m.sku,{size:m.sizes?.[0]});items.push(buildItem({...m,price:mp},{variantSKU:mSKU,quantity:1}));add({productId:m.id,variantSKU:mSKU,slug:m.slug,name:m.name,price:mp,image:m.images?.[0],size:m.sizes?.[0]||'',qty:1});value+=mp;}}track('add_to_cart',{value,items});trackMeta('AddToCart',{currency:'UAH',value,contents:items.map(i=>({id:i.item_id,quantity:i.quantity})),content_type:'product'}); };
 
-  useEffect(() => {
-    if (mattress && !compatibleMattresses.some((m) => m.id === mattress)) setMattress(null);
-  }, [size, compatibleMattresses, mattress]);
+  const availMap={in_stock:'https://schema.org/InStock',made_to_order:'https://schema.org/PreOrder',out_of_stock:'https://schema.org/OutOfStock'}; const brand=product.manufacturer||product.brand||'Homefort';
+  const productLd={'@context':'https://schema.org','@type':'Product',name:product.name,image:product.images,description:product.shortDescription||product.fullDescription||'',sku:product.sku,brand:{'@type':'Brand',name:brand},manufacturer:{'@type':'Organization',name:brand},offers:{'@type':'Offer',url:`https://domera.shop/product/${product.slug}`,priceCurrency:'UAH',price:basePrice,availability:availMap[product.availability]||'https://schema.org/PreOrder',seller:{'@type':'Organization',name:'DOMERA'}}};
+  if(product.reviewsCount>0)productLd.aggregateRating={'@type':'AggregateRating',ratingValue:product.rating,reviewCount:product.reviewsCount};
+  const breadcrumbLd={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Головна',item:'https://domera.shop/'},{'@type':'ListItem',position:2,name:CATEGORY_NAMES[product.category]||product.category,item:`https://domera.shop/catalog/${product.category}`},{'@type':'ListItem',position:3,name:product.name,item:`https://domera.shop/product/${product.slug}`}]};
 
-  useEffect(() => {
-    if (!product || typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    if (size) url.searchParams.set('size', size); else url.searchParams.delete('size');
-    if (fabric) url.searchParams.set('fabric', fabric); else url.searchParams.delete('fabric');
-    if (lifting) url.searchParams.set('lifting', '1'); else url.searchParams.delete('lifting');
-    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
-  }, [product?.id, size, fabric, lifting]);
+  return <div className="bg-milk min-h-screen pb-28 lg:pb-0">
+    <Seo title={product.seoTitle||`${product.name} — купити від ${basePrice.toLocaleString('uk-UA')} ₴ | DOMERA`} description={product.seoDescription||product.shortDescription||product.fullDescription||''} canonical={product.canonicalUrl||`/product/${product.slug}`} image={product.ogImage||product.images?.[0]} noindex={product.indexable===false} jsonLd={[productLd,breadcrumbLd]}/>
+    <Header/><main className="pt-[78px]"><div className="mx-auto max-w-[1440px] px-6 lg:px-12 py-8 md:py-12">
+      <nav className="pdp-breadcrumb text-[13px] text-mocha mb-4 md:mb-6 flex gap-2 flex-wrap"><Link to="/">Головна</Link><span>/</span><Link to={`/catalog/${product.category}`}>{CATEGORY_NAMES[product.category]||product.category}</Link><span>/</span><span className="text-espresso">{product.name}</span></nav>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16"><div className="lg:col-span-7"><ProductGallery key={product.id} images={product.images} videoUrl={product.videoUrl} salePercent={discounted?Math.round((1-basePrice/baseOld)*100):0} name={product.imageAlt||product.name} activeIndex={activeImg} onActiveChange={setActiveImg}/></div>
+        <div className="lg:col-span-5">
+          {discounted&&<div className="mb-3"><DiscountBadge product={product}/></div>}
+          <h1 className="font-heading text-[clamp(1.7rem,3.5vw,2.8rem)] leading-[1.06] text-espresso">{product.seoH1||product.name}</h1>
+          {product.reviewsCount>0&&<div className="flex items-center gap-3 mt-2"><div className="flex gap-0.5 text-champagne">{[...Array(5)].map((_,k)=><Star key={k} className="w-4 h-4 fill-champagne" strokeWidth={0}/>)}</div><span className="text-[13px] text-mocha">{product.rating} · {product.reviewsCount} відгуків</span></div>}
+          <p className="hidden md:block text-[13px] text-mocha mt-2">Артикул: {buildVariantSKU(product.sku,{size,color,fabric,lifting:isBed&&lifting})}</p>
+          <DiscountPrice product={promoProduct} price={livePrice} className={`mt-5 px-1 -mx-1 ${priceFlash?'price-updated':''}`}/><p className="text-sm text-mocha mt-2">Остаточну суму та доступні способи оплати підтвердимо при оформленні</p>
+          {extraPrice>0&&<div className="mt-2 text-xs text-mocha">Комплектація додає {extraPrice.toLocaleString('uk-UA')} ₴ до базової ціни.</div>}
 
-  useEffect(() => {
-    if (!product) return;
-    setPriceFlash(true); const timer = setTimeout(() => setPriceFlash(false), 200);
-    return () => clearTimeout(timer);
-  }, [livePrice]);
+          {uniqueProductSizes(product.sizes||[]).length>0&&<div className="mt-7"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3"><span className="text-champagne mr-2">01</span>Спальне місце</p><div className="flex flex-wrap gap-2">{uniqueProductSizes(product.sizes).map(s=><button key={s} onClick={()=>{setSize(s);track('select_size',{item_id:product.sku,size:s});}} className={`ui-radius-sm min-h-12 px-4 py-2.5 border text-sm ${size===s?'border-espresso bg-espresso text-milk':'border-espresso/20 text-espresso'}`}>{s}</button>)}</div>{size&&<Link to={`/catalog/${product.category}/${sizeToSlug(size)}`} className="mt-3 inline-block text-xs text-champagne underline underline-offset-4">Дивитись усі {CATEGORY_NAMES[product.category]?.toLowerCase()||'товари'} {size} →</Link>}</div>}
+          {product.colors?.length>0&&<div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Колір</p><div className="flex flex-wrap gap-3">{product.colors.map(c=><button key={c} onClick={()=>setColor(c)} aria-label={c} className={`w-11 h-11 rounded-full border-2 ${color===c?'border-espresso scale-110':'border-espresso/15'}`} style={{background:c}}/>)}</div></div>}
 
-  useEffect(() => {
-    if (product) {
-      recentlyViewed.add(product);
-      track('view_item', { items: [buildItem(product, { variantSKU: buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting }), size, color, fabric, price: livePrice })] });
-      trackMeta('ViewContent', { currency: 'UAH', value: livePrice, content_name: product.name, content_ids: [product.sku], content_type: 'product' });
-    }
-  }, [product?.id]);
+          {isBed&&<div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-1"><span className="text-champagne mr-2">02</span>Тканина та колір</p><FabricSelector fabrics={product.fabrics||[]} value={fabric} onChange={(value,index)=>{setFabric(value);setActiveImg(Math.min(index+(product.videoUrl?1:0),Math.max(0,(product.images||[]).length-1)));track('select_fabric',{item_id:product.sku,fabric:value});}}/><div className="mt-4"><ConsultationMagnet onOpen={()=>openConsult('fabric_selector')} compact emphasis={!product.fabrics?.length}/></div></div>}
 
-  if (loading) {
-    return (
-      <div className="bg-milk min-h-screen">
-        <Header />
-        <div className="pt-[120px] mx-auto max-w-[1440px] px-6 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="aspect-[4/5] skeleton" />
-            <div className="space-y-4"><div className="h-10 skeleton" /><div className="h-6 w-1/2 skeleton" /><div className="h-40 skeleton" /></div>
-          </div>
+          <div className="mt-5"><span className="product-status-badge">{product.availability==='in_stock'?'В наявності':product.productionTime?`Виготовлення ${product.productionTime}`:'Під замовлення'}</span></div>
+          <div className="hidden md:block"><ProductBenefits product={product}/><DeliveryPromise product={product}/><DeliveryEstimator productionTime={product.productionTime}/></div>
+
+          {isBed&&<div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3"><span className="text-champagne mr-2">03</span>Комплектація</p><div className="grid grid-cols-2 gap-2"><button onClick={()=>setLifting(true)} className={`px-4 py-3 border text-sm ${lifting?'border-espresso bg-espresso text-milk':'border-espresso/20 text-espresso'}`}>З механізмом <span className="block text-xs opacity-75">+{LIFTING_SURCHARGE.toLocaleString('uk-UA')} ₴</span></button><button onClick={()=>setLifting(false)} className={`px-4 py-3 border text-sm ${!lifting?'border-espresso bg-espresso text-milk':'border-espresso/20 text-espresso'}`}>Без механізму</button></div></div>}
+
+          {isBed&&<div className="ui-radius-md mt-6 bg-espresso text-milk p-4 md:p-5"><p className="text-[13px] tracking-[0.12em] uppercase text-milk/60"><span className="text-champagne mr-2">04</span>Комплект з матрацом</p><p className="text-[13px] text-milk/70 mt-1">{compatibleMattresses.length>0?`Сумісні з розміром ${size||'ліжка'}`:'Підтвердженого матраца для цього розміру ще немає в каталозі'}</p>{compatibleMattresses.length>0?<div className="space-y-2 mt-4"><button onClick={()=>setMattress(null)} className={`w-full px-4 py-3 border text-sm text-left ${!mattress?'border-milk bg-milk text-espresso':'border-milk/20 text-milk'}`}>Без матраца</button>{compatibleMattresses.slice(0,2).map(m=><button key={m.id} onClick={()=>setMattress(m.id)} className={`w-full px-4 py-3 border text-sm text-left flex items-center justify-between gap-3 ${mattress===m.id?'border-milk bg-milk text-espresso':'border-milk/20 text-milk'}`}><span className="flex items-center gap-3 min-w-0">{m.images?.[0]&&<span className="w-10 h-10 flex-shrink-0 overflow-hidden bg-sand"><Image src={m.images[0]} alt="" className="w-full h-full"/></span>}<span className="truncate">{m.name}</span></span><span>+{currentPrice(m).toLocaleString('uk-UA')} ₴</span></button>)}</div>:<div className="mt-4"><ConsultationMagnet onOpen={()=>openConsult('mattress_missing')} emphasis compact/></div>}</div>}
+
+          <PurchaseSummary size={size} fabric={fabric} lifting={lifting} mattress={mattress} mattresses={compatibleMattresses} price={livePrice}/><ShareConfiguration product={product} size={size} fabric={fabric} lifting={lifting} price={livePrice}/>
+          <div className="mt-8 flex items-stretch gap-3"><div className="flex items-center border border-espresso/20"><button onClick={()=>setQty(Math.max(1,qty-1))} className="w-11 h-12">−</button><span className="w-10 text-center">{qty}</span><button onClick={()=>setQty(qty+1)} className="w-11 h-12">+</button></div><button onClick={handleAdd} className="ui-action ui-radius-sm flex-1 py-4 text-[13px] tracking-[0.12em] uppercase flex items-center justify-center gap-2">Додати в кошик <ArrowRight className="w-4 h-4"/></button><button aria-label="В обране" onClick={()=>toggleWish({productId:product.id,slug:product.slug,name:product.name,price:basePrice,image:product.images?.[0]})} className={`w-12 border flex items-center justify-center ${hasWish(product.id)?'border-espresso bg-espresso text-milk':'border-espresso/20 text-espresso'}`}><Heart className="w-5 h-5" fill={hasWish(product.id)?'currentColor':'none'}/></button></div>
+          <button onClick={()=>{track('one_click_open',{item_id:product.sku,value:livePrice,size});setLead('one_click');}} className="mt-3 w-full py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso">Купити в 1 клік</button>
+          <div className="mt-4"><ConsultationMagnet onOpen={()=>openConsult('main_cta')}/></div><ReassuranceRow/>
         </div>
       </div>
-    );
-  }
 
-  if (!product) {
-    return (
-      <div className="bg-milk min-h-screen">
-        <Header />
-        <div className="pt-[140px] pb-32 text-center px-6">
-          <h1 className="font-heading text-4xl text-espresso">Товар не знайдено</h1>
-          <Link to="/catalog/beds" className="mt-6 inline-block text-mocha underline">Повернутись до каталогу</Link>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+      <section className="mt-14 md:mt-20 border-t border-espresso/10 pt-8"><div className="max-w-[780px] space-y-4">{formatProductDescription(product.fullDescription||product.shortDescription).slice(0,3).map((paragraph,index)=><p key={index} className={`leading-[1.75] ${index===0?'text-[18px] text-espresso':'text-[16px] text-mocha'}`}>{paragraph}</p>)}</div><DeliveryFitCard product={product}/>{!hasDimensions&&<div className="mt-4 max-w-4xl"><ConsultationMagnet onOpen={()=>openConsult('dimensions_missing')} emphasis/></div>}
+        <div className="product-accordion mt-8 max-w-4xl"><details open><summary>Характеристики <span aria-hidden="true">＋</span></summary><div><ProductDimensions product={product}/><div className="mt-5 grid sm:grid-cols-2 gap-x-10 gap-y-2">{[['Артикул',buildVariantSKU(product.sku,{size,color,fabric,lifting:isBed&&lifting})],['Габарити',product.dimensions],['Вага',product.weight],['Матеріал',product.material],['Гарантія',product.warranty],['Термін виготовлення',product.productionTime]].filter(([,v])=>v).map(([k,v])=><div key={k} className="flex justify-between gap-4 border-b border-espresso/10 py-2"><span>{k}</span><strong className="text-espresso text-right">{v}</strong></div>)}</div></div></details><details open><summary>Доставка <span aria-hidden="true">＋</span></summary><div>Доставка по Україні. Точний спосіб, вартість, підйом і збірку менеджер підтвердить разом із конфігурацією замовлення.</div></details><details><summary>Гарантія <span aria-hidden="true">＋</span></summary><div>{product.warranty?`Гарантія: ${product.warranty}.`:'Умови гарантії та сервісу підтверджуються для конкретної комплектації перед оформленням.'}</div></details></div>
+      </section>
+      <InteriorGallery product={product}/><ReviewSummary product={product}/>
+      {premiumAlternatives.length>0&&<section className="mt-20 md:mt-28 border-t border-espresso/10 pt-12"><p className="text-[10px] tracking-[0.26em] uppercase text-mocha">Альтернативи у близькому класі</p><h2 className="font-heading text-[clamp(2rem,4vw,3rem)] text-espresso mt-2 mb-8">Схожі моделі без різкого падіння класу</h2><div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{premiumAlternatives.map(p=><ProductCard key={p.id} product={p}/>)}</div></section>}
+      <RecentlyViewedRail currentId={product.id}/>{recommendations.length>0&&<div className="mt-20 md:mt-28"><h2 className="font-heading text-[clamp(1.8rem,3.5vw,2.6rem)] text-espresso mb-3">{isBed?'Доповніть спальню':'Завершіть комплект'}</h2>{isBed&&size&&<p className="text-sm text-mocha mb-8">Підібрано під розмір {size}</p>}<div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{recommendations.map(p=><ProductCard key={p.id} product={p}/>)}</div></div>}
+    </div></main><Footer/>
 
-  const handleAdd = () => {
-    const bedUnitPrice = product.price + (isBed && lifting ? LIFTING_SURCHARGE : 0);
-    const bedVariantSKU = buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting });
-    const items = [buildItem(product, { variantSKU: bedVariantSKU, size, color, fabric, quantity: qty, price: bedUnitPrice })];
-    add({ productId: product.id, variantSKU: bedVariantSKU, slug: product.slug, name: product.name, price: bedUnitPrice, image: product.images[0], size, color, fabric, qty });
-    let value = bedUnitPrice * qty;
-    if (mattress) {
-      const m = mattresses.find((x) => x.id === mattress);
-      if (m) {
-        const mSKU = buildVariantSKU(m.sku, { size: m.sizes?.[0] });
-        items.push(buildItem(m, { variantSKU: mSKU, quantity: 1 }));
-        add({ productId: m.id, variantSKU: mSKU, slug: m.slug, name: m.name, price: m.price, image: m.images?.[0], size: m.sizes?.[0] || '', qty: 1 });
-        value += m.price;
-      }
-    }
-    track('add_to_cart', { value, items });
-    trackMeta('AddToCart', { currency: 'UAH', value, contents: items.map((i) => ({ id: i.item_id, quantity: i.quantity })), content_type: 'product' });
-  };
-
-  const availMap = { in_stock: 'https://schema.org/InStock', made_to_order: 'https://schema.org/PreOrder', out_of_stock: 'https://schema.org/OutOfStock' };
-  const availSchema = availMap[product.availability] || 'https://schema.org/PreOrder';
-  const productLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    image: product.images,
-    description: product.shortDescription || product.fullDescription || '',
-    sku: product.sku,
-    brand: { '@type': 'Brand', name: 'DOMERA' },
-    offers: {
-      '@type': 'Offer',
-      url: `https://domera.shop/product/${product.slug}`,
-      priceCurrency: 'UAH',
-      price: product.price,
-      availability: availSchema,
-    },
-  };
-  if (product.reviewsCount > 0) productLd.aggregateRating = { '@type': 'AggregateRating', ratingValue: product.rating, reviewCount: product.reviewsCount };
-  const breadcrumbLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Головна', item: 'https://domera.shop/' },
-      { '@type': 'ListItem', position: 2, name: CATEGORY_NAMES[product.category] || product.category, item: `https://domera.shop/catalog/${product.category}` },
-      { '@type': 'ListItem', position: 3, name: product.name, item: `https://domera.shop/product/${product.slug}` },
-    ],
-  };
-
-  return (
-    <div className="bg-milk min-h-screen pb-24 lg:pb-0">
-      <Seo title={product.seoTitle || `${product.name} — купити від ${product.price.toLocaleString('uk-UA')} ₴ | DOMERA`} description={product.seoDescription || product.shortDescription || product.fullDescription || ''} canonical={product.canonicalUrl || `/product/${product.slug}`} image={product.ogImage || product.images?.[0]} noindex={product.indexable === false} jsonLd={[productLd, breadcrumbLd]} />
-      <Header />
-      <main className="pt-[78px]">
-        <div className="mx-auto max-w-[1440px] px-6 lg:px-12 py-8 md:py-12">
-          <nav className="pdp-breadcrumb text-[13px] text-mocha mb-4 md:mb-6 flex gap-2 flex-wrap"><Link to="/" className="hover:text-espresso">Головна</Link><span>/</span><Link to={`/catalog/${product.category}`} className="hover:text-espresso">{CATEGORY_NAMES[product.category] || product.category}</Link><span>/</span><span className="text-espresso">{product.name}</span></nav>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
-            <div className="lg:col-span-7"><ProductGallery key={product.id} images={product.images} videoUrl={product.videoUrl} salePercent={product.salePercent} name={product.imageAlt || product.name} activeIndex={activeImg} onActiveChange={setActiveImg} /></div>
-
-            <div className="lg:col-span-5">
-              <h1 className="font-heading text-[clamp(1.7rem,3.5vw,2.8rem)] leading-[1.06] text-espresso">{product.seoH1 || product.name}</h1>
-              {product.reviewsCount > 0 && <div className="flex items-center gap-3 mt-2"><div className="flex gap-0.5 text-champagne">{[...Array(5)].map((_, k) => <Star key={k} className="w-4 h-4 fill-champagne" strokeWidth={0} />)}</div><span className="text-[13px] text-mocha">{product.rating} · {product.reviewsCount} відгуків</span></div>}
-              <p className="hidden md:block text-[13px] text-mocha mt-2">Артикул: {buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting })}</p>
-
-              <div className="mt-5 flex items-baseline gap-3"><span className={`font-heading text-4xl font-extrabold text-espresso px-1 -mx-1 ${priceFlash ? 'price-updated' : ''}`}>{livePrice.toLocaleString('uk-UA')} ₴</span>{product.oldPrice > 0 && <span className="text-lg text-mocha line-through">{product.oldPrice.toLocaleString('uk-UA')} ₴</span>}</div>
-              <p className="text-sm text-mocha mt-2">Остаточну суму та доступні способи оплати підтвердимо при оформленні</p>
-              <PriceValueBlock price={livePrice} oldPrice={product.oldPrice} salePercent={product.salePercent} />
-              {(isBed && lifting) || mattress ? <div className="mt-2 text-xs text-mocha space-y-0.5">{isBed && lifting && <p>· підйомний механізм +{LIFTING_SURCHARGE.toLocaleString('uk-UA')} ₴</p>}{mattress && (() => { const m = mattresses.find((x) => x.id === mattress); return m ? <p key={m.id}>· матрац {m.name} +{m.price.toLocaleString('uk-UA')} ₴</p> : null; })()}</div> : null}
-
-              {uniqueProductSizes(product.sizes).length > 0 && <div className="mt-7"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3"><span className="text-champagne mr-2">01</span>Спальне місце</p><div className="flex flex-wrap gap-2">{uniqueProductSizes(product.sizes).map((s) => <button key={s} onClick={() => { setSize(s); track('select_size', { item_id: product.sku, size: s }); }} className={`ui-radius-sm min-h-12 px-4 py-2.5 border text-sm transition-all ${size === s ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>{s}</button>)}</div>{size && <Link to={`/catalog/${product.category}/${sizeToSlug(size)}`} className="mt-3 inline-block text-xs text-champagne underline underline-offset-4 hover:text-espresso">Дивитись усі {CATEGORY_NAMES[product.category]?.toLowerCase() || 'товари'} {size} →</Link>}</div>}
-
-              {product.colors?.length > 0 && <div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3">Колір</p><div className="flex flex-wrap gap-3">{product.colors.map((c) => <button key={c} onClick={() => { setColor(c); track('select_color', { item_id: product.sku, color: c }); }} aria-label={c} className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'border-espresso scale-110' : 'border-espresso/15'}`} style={{ background: c }} />)}</div></div>}
-
-              {isBed && <div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-1"><span className="text-champagne mr-2">02</span>Тканина та колір</p><FabricSelector fabrics={product.fabrics || []} value={fabric} onChange={(value, index) => { setFabric(value); setActiveImg(Math.min(index + (product.videoUrl ? 1 : 0), Math.max(0, (product.images || []).length - 1))); track('select_fabric', { item_id: product.sku, fabric: value }); }} />{product.fabrics?.length > 0 ? <button onClick={() => setLead('fabric_sample')} className="mt-3 text-xs text-champagne underline underline-offset-4 hover:text-espresso">Замовити зразки тканини →</button> : <button onClick={() => setLead('consultation')} className="mt-3 text-xs text-champagne underline underline-offset-4 hover:text-espresso">Допомогти підібрати тканину →</button>}</div>}
-
-              <div className="mt-5"><span className="product-status-badge">{product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення'}</span></div>
-              <div className="hidden md:block"><ProductBenefits product={product} /><DeliveryPromise product={product} /><DeliveryEstimator productionTime={product.productionTime} /></div>
-
-              {isBed && <div className="mt-6"><p className="text-[11px] tracking-[0.22em] uppercase text-mocha mb-3"><span className="text-champagne mr-2">03</span>Комплектація</p><div className="flex gap-2"><button onClick={() => { setLifting(true); track('select_mechanism', { item_id: product.sku, mechanism: 'lifting' }); }} className={`flex-1 px-4 py-3 border text-sm flex items-center justify-between transition-all ${lifting ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>З механізмом <span className="text-xs opacity-80">+{LIFTING_SURCHARGE.toLocaleString('uk-UA')} ₴</span></button><button onClick={() => { setLifting(false); track('select_mechanism', { item_id: product.sku, mechanism: 'standard' }); }} className={`flex-1 px-4 py-3 border text-sm transition-all ${!lifting ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}>Без механізму</button></div></div>}
-
-              {isBed && <div className="ui-radius-md mt-6 bg-espresso text-milk p-4 md:p-5"><div className="flex items-end justify-between gap-4 mb-3"><div><p className="text-[13px] tracking-[0.12em] uppercase text-milk/60"><span className="text-champagne mr-2">04</span>Комплект з матрацом</p><p className="text-[13px] text-milk/70 mt-1">{compatibleMattresses.length > 0 ? `Показуємо тільки сумісні з розміром ${size || 'ліжка'}` : 'Для цього розміру ще немає підтверджених матраців у каталозі'}</p></div></div>{compatibleMattresses.length > 0 ? <div className="space-y-2"><button onClick={() => { setMattress(null); track('add_mattress', { item_id: product.sku, mattress: 'none' }); }} className={`w-full px-4 py-3 border text-sm text-left transition-all ${!mattress ? 'border-milk bg-milk text-espresso' : 'border-milk/20 text-milk hover:border-milk/60'}`}>Без матраца</button>{compatibleMattresses.map((m) => <button key={m.id} onClick={() => { setMattress(m.id); track('add_mattress', { item_id: product.sku, mattress_id: m.id, mattress_name: m.name, value: m.price }); }} className={`w-full px-4 py-3 border text-sm text-left flex items-center justify-between gap-3 transition-all ${mattress === m.id ? 'border-milk bg-milk text-espresso' : 'border-milk/20 text-milk hover:border-milk/60'}`}><span className="flex items-center gap-3 min-w-0"><span className="w-10 h-10 flex-shrink-0 overflow-hidden bg-sand"><Image src={m.images?.[0]} alt="" className="w-full h-full" /></span><span className="min-w-0"><span className="block truncate">{m.name}</span><span className="block text-xs opacity-70 truncate">{m.shortDescription}</span></span></span><span className="flex-shrink-0 text-right">+{m.price.toLocaleString('uk-UA')} ₴{m.oldPrice > m.price && <small className="block text-[13px] text-champagne">Економія {(m.oldPrice - m.price).toLocaleString('uk-UA')} ₴</small>}</span></button>)}</div> : <div className="space-y-3"><p className="text-[13px] leading-relaxed text-milk/75">Ми не підставляємо випадковий матрац без перевірки розміру. Перейдіть до каталогу або попросіть менеджера підібрати сумісну модель.</p><div className="flex flex-wrap gap-2"><Link to="/catalog/mattresses" className="ui-radius-sm min-h-11 inline-flex items-center px-4 border border-milk bg-milk text-espresso text-[13px]">Каталог матраців</Link><button onClick={() => setLead('consultation')} className="ui-radius-sm min-h-11 px-4 border border-milk/30 text-milk text-[13px]">Підібрати з менеджером</button></div></div>}</div>}
-
-              <PurchaseSummary size={size} fabric={fabric} lifting={lifting} mattress={mattress} mattresses={compatibleMattresses} price={livePrice} />
-              <ShareConfiguration product={product} size={size} fabric={fabric} lifting={lifting} price={livePrice} />
-
-              <div className="mt-8 flex items-stretch gap-3"><div className="flex items-center border border-espresso/20"><button onClick={() => setQty(Math.max(1, qty - 1))} className="w-11 h-12 text-espresso hover:bg-espresso/5">−</button><span className="w-10 text-center text-espresso">{qty}</span><button onClick={() => setQty(qty + 1)} className="w-11 h-12 text-espresso hover:bg-espresso/5">+</button></div><button onClick={handleAdd} className="ui-action ui-radius-sm group flex-1 py-4 text-[13px] tracking-[0.12em] uppercase flex items-center justify-center gap-2">Додати в кошик <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" strokeWidth={1.4} /></button><button aria-label="В обране" onClick={() => { const inW = hasWish(product.id); toggleWish({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: product.images?.[0] }); track(inW ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] }); }} className={`w-12 border flex items-center justify-center transition-colors ${hasWish(product.id) ? 'border-espresso bg-espresso text-milk' : 'border-espresso/20 text-espresso hover:border-espresso'}`}><Heart className="w-5 h-5" fill={hasWish(product.id) ? 'currentColor' : 'none'} strokeWidth={1.4} /></button></div>
-
-              <div className="mt-3 flex gap-3"><button onClick={() => { track('one_click_open', { item_id: product.sku, value: livePrice, size }); setLead('one_click'); }} className="flex-1 py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors">Купити в 1 клік</button><button onClick={() => { track('consultation_open', { item_id: product.sku, source: 'product_buttons' }); setLead('consultation'); }} className="flex-1 py-3 border border-espresso/25 text-[11px] tracking-[0.18em] uppercase text-espresso hover:bg-espresso hover:text-milk transition-colors">Консультація</button></div>
-              <ReassuranceRow />
-            </div>
-          </div>
-
-          <section className="mt-14 md:mt-20 border-t border-espresso/10 pt-8"><div className="max-w-[780px] space-y-4">{formatProductDescription(product.fullDescription || product.shortDescription).slice(0, 3).map((paragraph, index) => <p key={index} className={`leading-[1.75] ${index === 0 ? 'text-[18px] text-espresso' : 'text-[16px] text-mocha'}`}>{paragraph}</p>)}</div><DeliveryFitCard product={product} /><div className="product-accordion mt-8 max-w-4xl"><details><summary>Характеристики <span aria-hidden="true">＋</span></summary><div><ProductDimensions product={product} /><div className="mt-5 grid sm:grid-cols-2 gap-x-10 gap-y-2">{[['Артикул', buildVariantSKU(product.sku, { size, color, fabric, lifting: isBed && lifting })], ['Габарити', product.dimensions], ['Вага', product.weight], ['Матеріал', product.material], ['Гарантія', product.warranty], ['Термін виготовлення', product.productionTime]].filter(([,v]) => v).map(([k,v]) => <div key={k} className="flex justify-between gap-4 border-b border-espresso/10 py-2"><span>{k}</span><strong className="text-espresso text-right">{v}</strong></div>)}</div></div></details><details><summary>Доставка <span aria-hidden="true">＋</span></summary><div>Доставка по Україні. Точний спосіб, вартість, підйом і збірку менеджер підтвердить разом із конфігурацією замовлення.</div></details><details><summary>Гарантія <span aria-hidden="true">＋</span></summary><div>{product.warranty ? `Гарантія: ${product.warranty}.` : 'Умови гарантії та сервісу підтверджуються для конкретної комплектації перед оформленням.'}</div></details></div></section>
-
-          <InteriorGallery product={product} />
-          <ReviewSummary product={product} />
-          <CompareModels products={related} />
-          <RecentlyViewedRail currentId={product.id} />
-
-          {recommendations.length > 0 && <div className="mt-20 md:mt-28"><h2 className="font-heading text-[clamp(1.8rem,3.5vw,2.6rem)] text-espresso mb-3">{isBed ? 'Доповніть спальню' : 'Завершіть комплект'}</h2>{isBed && size && <p className="text-sm text-mocha mb-8">Підібрано під розмір {size}</p>}<div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">{recommendations.map((p) => <ProductCard key={p.id} product={p} />)}</div></div>}
-        </div>
-      </main>
-      <Footer />
-
-      <LeadModal open={lead !== null} onClose={() => setLead(null)} leadType={lead} product={product} context={{ variantSKU: buildVariantSKU(product?.sku, { size, color, fabric, lifting: isBed && lifting }), configuration: [size, color, fabric, isBed && lifting ? 'підйомний механізм' : ''].filter(Boolean).join(' / '), fabrics: fabric ? [fabric] : [], price: livePrice }} />
-      <StickyBuyBar product={product} price={livePrice} size={size} onBuy={handleAdd} onQuickBuy={() => { track('one_click_open', { item_id: product.sku, value: livePrice, size, source: 'sticky' }); setLead('one_click'); }} />
-      <FloatingConsultation onClick={() => { track('consultation_open', { item_id: product.sku, source: 'floating' }); setLead('consultation'); }} />
-    </div>
-  );
+    <LeadModal open={lead!==null} onClose={()=>setLead(null)} leadType={lead} product={{...product,price:basePrice}} context={{variantSKU:buildVariantSKU(product?.sku,{size,color,fabric,lifting:isBed&&lifting}),configuration:[size,color,fabric,isBed&&lifting?'підйомний механізм':''].filter(Boolean).join(' / '),fabrics:fabric?[fabric]:[],price:livePrice}}/>
+    <TimedProductPopup product={product} onConsult={()=>openConsult('timed_popup')}/>
+    <div className="mobile-sticky-buy fixed bottom-0 inset-x-0 z-40 bg-milk/95 backdrop-blur-xl border-t border-espresso/10 px-3 md:px-8 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]" data-visible="true"><div className="mx-auto max-w-[1440px] flex items-center gap-2 md:gap-5"><div className="min-w-0 flex-1"><p className="text-[12px] text-mocha truncate">{size?`${size} · ${product.name}`:product.name}</p><p className={`font-heading text-[22px] font-extrabold ${discounted?'text-[#C8643B]':'text-espresso'}`}>{livePrice.toLocaleString('uk-UA')} ₴</p></div><button type="button" onClick={()=>openConsult('sticky')} className="ui-radius-sm min-h-11 px-3 md:px-5 border border-[#C8643B] text-[#A34E2F] text-[11px] uppercase tracking-[0.08em] inline-flex items-center gap-2"><Phone className="w-4 h-4"/><span className="hidden sm:inline">Дзвінок</span></button><button type="button" onClick={handleAdd} className="ui-action ui-radius-sm min-w-[116px] sm:min-w-[210px] px-4 md:px-6 text-[12px] uppercase tracking-[0.1em] flex items-center justify-center gap-2">Купити <ArrowRight className="w-4 h-4"/></button></div></div>
+  </div>;
 }
