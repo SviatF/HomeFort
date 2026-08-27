@@ -76,7 +76,13 @@ export function getHomefortFeedProductBySlug(slug) {
 }
 
 export function getHomefortFeedCategory(category) {
-  return HOMEFORT_STATIC_CATEGORIES[category] || null;
+  const item = HOMEFORT_STATIC_CATEGORIES[category];
+  if (!item) return null;
+  // The catalog page is fully SSR-fed now. Omitting the client-only key keeps
+  // Catalog.jsx from replacing the already filtered SSR list during hydration
+  // when router params are not ready yet.
+  const { key: _clientKey, ...serverCategory } = item;
+  return serverCategory;
 }
 
 export function getHomefortFeedCategoryKeys() {
