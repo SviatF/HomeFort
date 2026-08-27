@@ -84,7 +84,7 @@ export function DiscountPrice({ product, price, className = '' }) {
   const countdown = active ? formatCountdown(deadline, now) : '';
   return <div className={className}>
     <div className="flex items-baseline gap-3 flex-wrap">
-      <span className={`font-heading text-4xl font-extrabold ${active ? 'text-[#C8643B]' : 'text-espresso'}`}>{money(price)} ₴</span>
+      <span className={`font-heading text-4xl font-extrabold ${active ? 'text-[#B44E2C]' : 'text-espresso'}`}>{money(price)} ₴</span>
       {active && old > price && <span className="text-lg text-mocha line-through">{money(old)} ₴</span>}
       {active && <span className="text-[11px] px-2.5 py-1 bg-[#C8643B]/10 text-[#A34E2F] font-semibold">−{discountPercent(product)}%</span>}
     </div>
