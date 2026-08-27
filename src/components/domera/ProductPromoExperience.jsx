@@ -14,44 +14,16 @@ export function DiscountBadge({ product, compact = false }) {
   return <span className={`${compact ? 'text-[10px] px-2 py-1' : 'text-[11px] px-3 py-1.5'} inline-flex items-center bg-[#C8643B] text-white tracking-[0.12em] uppercase font-semibold`}>{discountLabel(product)}</span>;
 }
 
-const BANK_META = {
-  monobank: {
-    name: 'monobank',
-    logo: '/banks/monobank.svg',
-    surface: 'bg-[#F3F3F3]',
-    border: 'border-[#111111]/15',
-    accent: 'bg-[#111111]',
-    amount: 'text-[#111111]',
-    eyebrow: 'text-[#666666]',
-    hover: 'hover:border-[#111111]/35 hover:shadow-[0_10px_30px_rgba(17,17,17,0.08)]',
-  },
-  privatbank: {
-    name: 'ПриватБанк',
-    logo: '/banks/privatbank.svg',
-    surface: 'bg-[#F4F8EF]',
-    border: 'border-[#69A82F]/25',
-    accent: 'bg-[#69A82F]',
-    amount: 'text-[#315A16]',
-    eyebrow: 'text-[#62824D]',
-    hover: 'hover:border-[#69A82F]/55 hover:shadow-[0_10px_30px_rgba(105,168,47,0.10)]',
-  },
-};
-
-function BankInstallmentCard({ bank }) {
-  const meta = BANK_META[bank.id] || BANK_META.monobank;
+function BankMark({ bank }) {
+  const mono = bank.id === 'monobank';
   return (
-    <div className={`relative overflow-hidden ui-radius-md border ${meta.border} ${meta.surface} ${meta.hover} transition-all duration-200 min-h-[118px] p-4 md:p-5`}>
-      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.accent}`} aria-hidden="true" />
-      <div className="flex items-center gap-4">
-        <div className="w-[108px] md:w-[122px] flex-shrink-0">
-          <img src={meta.logo} alt={meta.name} className="block w-full h-auto" loading="lazy" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={`text-[10px] md:text-[11px] uppercase tracking-[0.14em] ${meta.eyebrow}`}>Оплата частинами</p>
-          <p className={`mt-1 font-heading text-[22px] md:text-[25px] font-extrabold leading-none ${meta.amount}`}>від {money(bank.monthly)} ₴/міс</p>
-          <p className="mt-2 text-[12px] md:text-[13px] text-mocha">до {bank.months} платежів</p>
-        </div>
-      </div>
+    <div className={`flex h-11 shrink-0 items-center justify-center rounded-xl ${mono ? 'bg-[#111111] px-4' : 'bg-[#69A82F] px-3.5'}`}>
+      <img
+        src={mono ? '/banks/monobank.svg' : '/banks/privatbank.svg'}
+        alt={mono ? 'monobank' : 'ПриватБанк'}
+        className={mono ? 'h-[18px] w-auto max-w-[88px]' : 'h-[21px] w-auto max-w-[112px]'}
+        loading="lazy"
+      />
     </div>
   );
 }
@@ -60,18 +32,44 @@ export function BankInstallmentBlock({ product, price }) {
   const options = bankInstallmentOptions(product, price);
   if (!options.length) return null;
 
-  return <section className="mt-5" aria-label="Розстрочка та оплата частинами">
-    <div className="flex items-center justify-between gap-4 mb-3">
+  return <section className="mt-5" aria-label="Оплата частинами">
+    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-mocha">Розстрочка / оплата частинами</p>
-        <p className="mt-1 text-[12px] text-mocha">Оберіть зручний банк при оформленні</p>
+        <p className="text-[11px] tracking-[0.18em] uppercase text-mocha">Розстрочка / оплата частинами</p>
+        <p className="mt-1 text-[13px] text-mocha">Оберіть зручний банк при оформленні</p>
       </div>
-      <span className="hidden md:inline text-[11px] text-mocha whitespace-nowrap">без переходу з товару</span>
+      <span className="hidden text-[11px] text-mocha sm:block">без переходу з товару</span>
     </div>
-    <div className={`grid gap-3 ${options.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-      {options.map((bank) => <BankInstallmentCard key={bank.id} bank={bank} />)}
+
+    <div className={`grid gap-3 ${options.length > 1 ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
+      {options.map((bank) => {
+        const mono = bank.id === 'monobank';
+        return (
+          <div
+            key={bank.id}
+            className={`relative overflow-hidden rounded-[18px] border px-4 py-4 transition-shadow hover:shadow-sm ${
+              mono
+                ? 'border-[#111111]/15 bg-[#111111]/[0.025]'
+                : 'border-[#69A82F]/25 bg-[#69A82F]/[0.055]'
+            }`}
+          >
+            <span className={`absolute inset-y-0 left-0 w-1 ${mono ? 'bg-[#111111]' : 'bg-[#69A82F]'}`} aria-hidden="true" />
+            <div className="flex items-center gap-4 pl-1">
+              <BankMark bank={bank} />
+              <div className="min-w-0 flex-1">
+                <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${mono ? 'text-[#5F5F5F]' : 'text-[#5E7E43]'}`}>Оплата частинами</p>
+                <p className={`mt-1 whitespace-nowrap text-[19px] font-semibold leading-none tracking-[-0.02em] ${mono ? 'text-[#111111]' : 'text-[#2F6E1C]'}`}>
+                  від {money(bank.monthly)} ₴/міс
+                </p>
+                <p className="mt-2 text-[12px] text-mocha">до {bank.months} платежів</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
-    <p className="mt-2.5 text-[11px] md:text-[12px] leading-relaxed text-mocha">Остаточна доступність, кредитний ліміт і умови визначаються банком під час оформлення.</p>
+
+    <p className="mt-3 text-[11px] leading-relaxed text-mocha">Остаточна доступність, кредитний ліміт і умови визначаються банком під час оформлення.</p>
   </section>;
 }
 
