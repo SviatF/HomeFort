@@ -1,5 +1,6 @@
 import { filterEntity } from '@/lib/base44-server';
-import { getHomefortBeds } from '@/lib/homefort-static';
+import { getHomefortBeds, getHomefortProducts } from '@/lib/homefort-static';
+import { getHomefortFeedCategoryKeys } from '@/lib/homefort-feed-static';
 import { BED_SEMANTIC_LANDINGS } from '@/lib/bed-semantic-core';
 import { mergeJournalPosts } from '@/lib/bed-topical-core';
 
@@ -18,10 +19,15 @@ export default async function sitemap() {
     ['/journal', 0.85, 'weekly'],
     ['/partners', 0.5, 'monthly'],
     ['/delivery-payment', 0.5, 'monthly'],
-  ].map(([path, priority, changeFrequency]) => ({ url: `${base}${path}`, lastModified: now, priority, changeFrequency }));
+  ].map(([route, priority, changeFrequency]) => ({ url: `${base}${route}`, lastModified: now, priority, changeFrequency }));
 
-  const categories = ['beds','mattresses','toppers','pillows','duvets','bedding','kids-mattresses'];
-  const categoryRoutes = categories.map((key) => ({ url: `${base}/catalog/${key}`, lastModified: now, priority: key === 'beds' ? 0.95 : 0.85, changeFrequency: 'daily' }));
+  const categories = getHomefortFeedCategoryKeys();
+  const categoryRoutes = categories.map((key) => ({
+    url: `${base}/catalog/${key}`,
+    lastModified: now,
+    priority: key === 'beds' ? 0.95 : ['services','other'].includes(key) ? 0.4 : 0.85,
+    changeFrequency: 'daily',
+  }));
 
   const semanticRoutes = Object.entries(BED_SEMANTIC_LANDINGS).map(([slug, landing]) => ({
     url: `${base}/catalog/beds/${slug}`,
@@ -30,13 +36,9 @@ export default async function sitemap() {
     changeFrequency: 'weekly',
   }));
 
-  const [editableProducts, dynamicPosts] = await Promise.all([
-    filterEntity('Product', {}),
-    filterEntity('Blog', { published: true }),
-  ]);
+  const dynamicPosts = await filterEntity('Blog', { published: true });
   const beds = getHomefortBeds().filter((p) => p.indexable !== false);
-  const otherProducts = editableProducts.filter((p) => p.category !== 'beds' && p.slug && p.indexable !== false);
-  const products = [...beds, ...otherProducts];
+  const products = categories.flatMap((category) => getHomefortProducts(category)).filter((p) => p.slug && p.indexable !== false);
   const posts = mergeJournalPosts(dynamicPosts);
 
   const sizeSlugs = [...new Set(beds.flatMap((p) => (p.sizes || []).map(sizeSlug)).filter(Boolean))];
@@ -49,7 +51,7 @@ export default async function sitemap() {
 
   const productRoutes = products.map((p) => ({
     url: `${base}/product/${p.slug}`,
-    lastModified: new Date(p.updated_date || p.created_date || now),
+    lastModified: now,
     priority: p.category === 'beds' ? 0.9 : 0.8,
     changeFrequency: 'weekly',
     images: p.images?.slice(0, 5),
