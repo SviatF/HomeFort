@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Product from '@/screens/Product';
-import { getHomefortProductBySlug, getHomefortProducts } from '@/lib/homefort-static';
+import { getHomefortLiveProductBySlug, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
 import { buildMetadata, breadcrumbSchema, productSchema } from '@/lib/seo';
 
@@ -10,13 +10,13 @@ function normalizeSize(value = '') {
 }
 
 async function getProductData(slug) {
-  const product = getHomefortProductBySlug(slug);
+  const product = await getHomefortLiveProductBySlug(slug);
   if (!product) return { product: null, related: [], mattresses: [], crossSell: [] };
 
-  const relatedAll = getHomefortProducts(product.category).filter((p) => p.indexable !== false && p.slug !== product.slug);
+  const relatedAll = (await getHomefortLiveProducts(product.category)).filter((p) => p.indexable !== false && p.slug !== product.slug);
   const productSizes = new Set((product.sizes || []).map(normalizeSize).filter(Boolean));
   const mattresses = product.category === 'beds'
-    ? getHomefortProducts('mattresses')
+    ? (await getHomefortLiveProducts('mattresses'))
         .filter((m) => (m.sizes || []).some((size) => productSizes.has(normalizeSize(size))))
         .sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
         .slice(0, 2)
