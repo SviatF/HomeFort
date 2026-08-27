@@ -1,12 +1,12 @@
 import 'server-only';
 import fs from 'node:fs';
 import path from 'node:path';
+import { getHomefortFeedProducts } from '@/lib/homefort-feed-static';
 
 const FEED_URL = 'https://homefort.ua/index.php?route=extension/feed/google_merchant&lang=uk';
 let memoryCache = null;
 let memoryCacheAt = 0;
 const CACHE_MS = 60 * 60 * 1000;
-
 const sizeRe = /(\d{2,3})\s*[xх×]\s*(\d{2,3})\s*(?:см)?/i;
 
 function decodeXml(value = '') {
@@ -26,7 +26,9 @@ function field(xml, name) {
 }
 
 function fields(xml, name) {
-  return [...xml.matchAll(new RegExp(`<g:${name}>([\\s\\S]*?)<\\/g:${name}>`, 'gi'))].map((m) => decodeXml(m[1])).filter(Boolean);
+  return [...xml.matchAll(new RegExp(`<g:${name}>([\\s\\S]*?)<\\/g:${name}>`, 'gi'))]
+    .map((m) => decodeXml(m[1]))
+    .filter(Boolean);
 }
 
 function parsePrice(value = '') {
@@ -66,7 +68,6 @@ function baseName(title = '') {
   const value = String(title).trim();
   const match = value.match(sizeRe);
   if (!match) return value;
-
   return `${value.slice(0, match.index)} ${value.slice((match.index || 0) + match[0].length)}`
     .replace(/\(\s*\)/g, '')
     .replace(/[\s,;:\-–—]+$/g, '')
@@ -79,15 +80,10 @@ function canonicalBedModelName(title = '') {
     .replace(/^ліжко\s+/i, '')
     .replace(/^ліжка\s+/i, '')
     .trim();
-
-  // Homefort merchant feed puts configuration options after the first comma,
-  // e.g. "Стелла-Кона, ПМ, Категорія 2, ЛК Стандарт 30". They are variants
-  // of one bed model and must not become separate catalog cards.
   const model = withoutSize.split(',')[0]
     .replace(/["'«»“”„]/g, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
-
   return model || withoutSize;
 }
 
@@ -100,14 +96,16 @@ function normalizedModelName(title = '') {
     .trim();
 }
 
+function normalizeSize(value = '') {
+  const match = String(value).match(sizeRe);
+  return match ? `${match[1]}×${match[2]}` : String(value || '').trim();
+}
+
 function variantSize(block, title = '') {
   const merchantSize = field(block, 'size');
-  const merchantMatch = merchantSize.match(sizeRe);
-  if (merchantMatch) return `${merchantMatch[1]}×${merchantMatch[2]}`;
-  if (merchantSize) return merchantSize.trim();
-
-  const titleMatch = String(title).match(sizeRe);
-  return titleMatch ? `${titleMatch[1]}×${titleMatch[2]}` : '';
+  const normalizedMerchant = normalizeSize(merchantSize);
+  if (normalizedMerchant) return normalizedMerchant;
+  return normalizeSize(title);
 }
 
 function productGroupKey(block) {
@@ -115,142 +113,116 @@ function productGroupKey(block) {
   const title = field(block, 'title');
   const productType = field(block, 'product_type');
   const category = categoryFor(productType);
-
-  // Beds are grouped by the actual model name, not by item_group_id. Homefort
-  // can assign separate group IDs/URLs to fabric category, lift mechanism,
-  // lamella type and size combinations of the same physical bed model.
   if (category === 'beds') {
     const model = normalizedModelName(title);
     if (model) return `bed:${model}`;
   }
-
   const itemGroupId = field(block, 'item_group_id');
   if (itemGroupId) return `merchant:${itemGroupId}`;
-
   return `url:${baseLink(link)}`;
+}
+
+function sortSizes(values = []) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => {
+    const am = String(a).match(sizeRe);
+    const bm = String(b).match(sizeRe);
+    if (!am || !bm) return String(a).localeCompare(String(b), 'uk');
+    const aa = Number(am[1]) * Number(am[2]);
+    const ba = Number(bm[1]) * Number(bm[2]);
+    return aa - ba || Number(am[1]) - Number(bm[1]);
+  });
+}
+
+function buildProduct(blocks, groupKey, slugUsage) {
+  const first = blocks[0];
+  const originalProductType = field(first, 'product_type');
+  const category = categoryFor(originalProductType);
+  const firstTitle = field(first, 'title');
+  const description = field(first, 'description');
+  const itemGroupId = field(first, 'item_group_id') || null;
+  const firstLink = field(first, 'link');
+  const images = [];
+  const variants = [];
+  const prices = [];
+  let inStock = false;
+
+  for (const block of blocks) {
+    const title = field(block, 'title');
+    const price = parsePrice(field(block, 'price'));
+    const availability = field(block, 'availability').toLowerCase().includes('in stock') ? 'in_stock' : 'out_of_stock';
+    const variantImages = [...fields(block, 'image_link'), ...fields(block, 'additional_image_link')];
+    const size = variantSize(block, title);
+    if (price > 0) prices.push(price);
+    if (availability === 'in_stock') inStock = true;
+    for (const image of variantImages) if (!images.includes(image)) images.push(image);
+    variants.push({
+      id: field(block, 'id'),
+      title,
+      size: size || null,
+      price,
+      availability,
+      sourceUrl: field(block, 'link'),
+      image: variantImages[0] || null,
+    });
+  }
+
+  const sizes = sortSizes(variants.map((v) => v.size));
+  variants.sort((a, b) => {
+    const ai = sizes.indexOf(a.size);
+    const bi = sizes.indexOf(b.size);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  const availablePrices = variants.filter((v) => v.availability === 'in_stock' && v.price > 0).map((v) => v.price);
+  const minPrice = availablePrices.length ? Math.min(...availablePrices) : prices.length ? Math.min(...prices) : 0;
+  const modelName = category === 'beds' ? canonicalBedModelName(firstTitle) : baseName(firstTitle);
+  const originalSlug = category === 'beds'
+    ? `bed-${normalizedModelName(firstTitle).replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`
+    : slugFromLink(firstLink || groupKey);
+  const usage = slugUsage.get(originalSlug) || 0;
+  slugUsage.set(originalSlug, usage + 1);
+  const slug = usage ? `${originalSlug}-${usage + 1}` : originalSlug;
+
+  return {
+    id: category === 'beds' ? slug : itemGroupId || field(first, 'id') || slug,
+    itemGroupId,
+    slug,
+    name: modelName,
+    category,
+    originalProductType,
+    productType: originalProductType,
+    price: minPrice,
+    price_current: minPrice,
+    priceFrom: variants.filter((variant) => variant.price > 0).length > 1,
+    currency: 'UAH',
+    availability: inStock ? 'in_stock' : 'out_of_stock',
+    images,
+    sizes,
+    variants,
+    shortDescription: description.slice(0, 280),
+    fullDescription: description,
+    brand: field(first, 'brand') || 'Homefort',
+    manufacturer: 'Homefort',
+    seller: 'DOMERA',
+    sourceUrl: firstLink,
+    indexable: !['services', 'other'].includes(category),
+  };
 }
 
 function parseFeed(xml = '') {
   const itemBlocks = [...String(xml).matchAll(/<item>([\s\S]*?)<\/item>/gi)].map((m) => m[1]);
   const groups = new Map();
-
   for (const block of itemBlocks) {
-    const link = field(block, 'link');
-    if (!link) continue;
+    if (!field(block, 'link')) continue;
     const key = productGroupKey(block);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(block);
   }
-
   const slugUsage = new Map();
-  const products = [];
-
-  for (const [groupKey, blocks] of groups.entries()) {
-    const first = blocks[0];
-    const originalProductType = field(first, 'product_type');
-    const category = categoryFor(originalProductType);
-    const firstTitle = field(first, 'title');
-    const description = field(first, 'description');
-    const itemGroupId = field(first, 'item_group_id') || null;
-    const firstLink = field(first, 'link');
-    const images = [];
-    const sizes = [];
-    const variants = [];
-    const prices = [];
-    let inStock = false;
-
-    for (const block of blocks) {
-      const title = field(block, 'title');
-      const id = field(block, 'id');
-      const link = field(block, 'link');
-      const price = parsePrice(field(block, 'price'));
-      const availabilityRaw = field(block, 'availability').toLowerCase();
-      const availability = availabilityRaw.includes('in stock') ? 'in_stock' : 'out_of_stock';
-      const size = variantSize(block, title);
-
-      if (price > 0) prices.push(price);
-      if (size && !sizes.includes(size)) sizes.push(size);
-      if (availability === 'in_stock') inStock = true;
-
-      const variantImages = [...fields(block, 'image_link'), ...fields(block, 'additional_image_link')];
-      for (const image of variantImages) {
-        if (!images.includes(image)) images.push(image);
-      }
-
-      variants.push({
-        id,
-        title,
-        size: size || null,
-        price,
-        availability,
-        sourceUrl: link,
-        image: variantImages[0] || null,
-      });
-    }
-
-    sizes.sort((a, b) => {
-      const aMatch = String(a).match(sizeRe);
-      const bMatch = String(b).match(sizeRe);
-      if (!aMatch || !bMatch) return String(a).localeCompare(String(b), 'uk');
-      const aArea = Number(aMatch[1]) * Number(aMatch[2]);
-      const bArea = Number(bMatch[1]) * Number(bMatch[2]);
-      return aArea - bArea || Number(aMatch[1]) - Number(bMatch[1]);
-    });
-
-    variants.sort((a, b) => {
-      const ai = sizes.indexOf(a.size);
-      const bi = sizes.indexOf(b.size);
-      if (ai === -1 && bi === -1) return 0;
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
-
-    const availablePrices = variants
-      .filter((variant) => variant.availability === 'in_stock' && variant.price > 0)
-      .map((variant) => variant.price);
-    const minPrice = availablePrices.length
-      ? Math.min(...availablePrices)
-      : prices.length
-        ? Math.min(...prices)
-        : 0;
-
-    const modelName = category === 'beds' ? canonicalBedModelName(firstTitle) : baseName(firstTitle);
-    const originalSlug = category === 'beds'
-      ? `bed-${normalizedModelName(firstTitle).replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`
-      : slugFromLink(firstLink || groupKey);
-    const usage = slugUsage.get(originalSlug) || 0;
-    slugUsage.set(originalSlug, usage + 1);
-    const slug = usage ? `${originalSlug}-${usage + 1}` : originalSlug;
-    const brand = field(first, 'brand') || 'Homefort';
-
-    products.push({
-      id: category === 'beds' ? slug : itemGroupId || field(first, 'id') || slug,
-      itemGroupId,
-      slug,
-      name: modelName,
-      category,
-      originalProductType,
-      productType: originalProductType,
-      price: minPrice,
-      price_current: minPrice,
-      priceFrom: variants.filter((variant) => variant.price > 0).length > 1,
-      currency: 'UAH',
-      availability: inStock ? 'in_stock' : 'out_of_stock',
-      images,
-      sizes,
-      variants,
-      shortDescription: description.slice(0, 280),
-      fullDescription: description,
-      brand,
-      manufacturer: 'Homefort',
-      seller: 'DOMERA',
-      sourceUrl: firstLink,
-      indexable: !['services', 'other'].includes(category),
-    });
-  }
-
-  return { sourceItems: itemBlocks.length, products };
+  return { sourceItems: itemBlocks.length, products: [...groups.entries()].map(([key, blocks]) => buildProduct(blocks, key, slugUsage)) };
 }
 
 function loadCuratedBeds() {
@@ -266,28 +238,18 @@ function loadCuratedBeds() {
 function mergeCuratedBeds(products = []) {
   const curated = loadCuratedBeds();
   if (!curated.length) return products;
-
   const result = [...products];
   const bySlug = new Map(result.map((product, index) => [product.slug, index]));
-  const byName = new Map(
-    result
-      .filter((product) => product.category === 'beds')
-      .map((product, index) => [normalizedModelName(product.name), index])
-      .filter(([name]) => Boolean(name)),
-  );
+  const byName = new Map(result.filter((p) => p.category === 'beds').map((p, index) => [normalizedModelName(p.name), index]).filter(([name]) => Boolean(name)));
 
   for (const item of curated) {
     if (!item?.slug && !item?.name) continue;
-    const nameKey = normalizedModelName(item.name || '');
-    const index = bySlug.get(item.slug) ?? byName.get(nameKey);
-
+    const index = bySlug.get(item.slug) ?? byName.get(normalizedModelName(item.name || ''));
     if (index !== undefined) {
       const live = result[index] || {};
       result[index] = {
         ...live,
         ...item,
-        // Variant/stock/price data comes from the live feed and must not be
-        // replaced by the old curated snapshot.
         name: live.name || item.name,
         price: live.price ?? item.price,
         price_current: live.price_current ?? item.price_current,
@@ -300,32 +262,70 @@ function mergeCuratedBeds(products = []) {
         manufacturer: item.manufacturer || live.manufacturer || 'Homefort',
         brand: item.brand || live.brand || 'Homefort',
       };
-      continue;
     }
+  }
+  return result;
+}
 
-    result.push({
-      ...item,
-      name: canonicalBedModelName(item.name || ''),
-      category: 'beds',
-      seller: 'DOMERA',
-      manufacturer: item.manufacturer || 'Homefort',
-      brand: item.brand || 'Homefort',
-    });
+function collapseStaticBedProducts(products = []) {
+  const nonBeds = products.filter((p) => p.category !== 'beds');
+  const bedGroups = new Map();
+  for (const product of products.filter((p) => p.category === 'beds')) {
+    const key = normalizedModelName(product.name || product.title || product.slug || '');
+    if (!key) continue;
+    if (!bedGroups.has(key)) bedGroups.set(key, []);
+    bedGroups.get(key).push(product);
   }
 
-  return result;
+  const beds = [...bedGroups.entries()].map(([key, items]) => {
+    const first = items[0];
+    const variants = items.flatMap((p) => Array.isArray(p.variants) && p.variants.length ? p.variants : [{ id: p.id, title: p.name, size: (p.sizes || [])[0] || null, price: Number(p.price || p.price_current || 0), availability: p.availability, sourceUrl: p.sourceUrl, image: (p.images || [])[0] || null }]);
+    const sizes = sortSizes(items.flatMap((p) => p.sizes || []).concat(variants.map((v) => v.size)));
+    const images = [...new Set(items.flatMap((p) => p.images || []).filter(Boolean))];
+    const availablePrices = variants.filter((v) => v.availability === 'in_stock' && Number(v.price) > 0).map((v) => Number(v.price));
+    const allPrices = variants.filter((v) => Number(v.price) > 0).map((v) => Number(v.price));
+    const price = availablePrices.length ? Math.min(...availablePrices) : allPrices.length ? Math.min(...allPrices) : Number(first.price || first.price_current || 0);
+    const slug = `bed-${key.replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`;
+    return {
+      ...first,
+      id: slug,
+      slug,
+      name: canonicalBedModelName(first.name || first.title || ''),
+      category: 'beds',
+      price,
+      price_current: price,
+      priceFrom: variants.length > 1,
+      availability: variants.some((v) => v.availability === 'in_stock') ? 'in_stock' : first.availability,
+      sizes,
+      variants,
+      images,
+      seller: 'DOMERA',
+      manufacturer: first.manufacturer || 'Homefort',
+      brand: first.brand || 'Homefort',
+    };
+  });
+  return [...beds, ...nonBeds];
+}
+
+function fallbackPayload() {
+  const products = collapseStaticBedProducts(getHomefortFeedProducts());
+  return { sourceItems: products.length, products: mergeCuratedBeds(products), fallback: true };
 }
 
 async function loadLivePayload() {
   if (memoryCache && Date.now() - memoryCacheAt < CACHE_MS) return memoryCache;
-  const response = await fetch(FEED_URL, { next: { revalidate: 3600 } });
-  if (!response.ok) throw new Error(`Homefort feed HTTP ${response.status}`);
-  const xml = await response.text();
-  const parsed = parseFeed(xml);
-  parsed.products = mergeCuratedBeds(parsed.products);
-  memoryCache = parsed;
+  try {
+    const response = await fetch(FEED_URL, { next: { revalidate: 3600 } });
+    if (!response.ok) throw new Error(`Homefort feed HTTP ${response.status}`);
+    const parsed = parseFeed(await response.text());
+    parsed.products = mergeCuratedBeds(parsed.products);
+    memoryCache = parsed;
+  } catch (error) {
+    console.warn('[homefort-feed-live] live feed unavailable, using local snapshot:', error?.message || error);
+    memoryCache = fallbackPayload();
+  }
   memoryCacheAt = Date.now();
-  return parsed;
+  return memoryCache;
 }
 
 export async function getHomefortLiveProducts(category = null) {
