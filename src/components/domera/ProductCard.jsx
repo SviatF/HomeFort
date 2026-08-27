@@ -6,6 +6,8 @@ import { track, buildItem } from '@/lib/analytics';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useCompare } from '@/lib/CompareContext';
 import ProductImage from '@/components/domera/ProductImage';
+import { DiscountBadge } from '@/components/domera/ProductPromoExperience';
+import { currentPrice, isDiscountActive, oldPrice } from '@/lib/product-promo';
 
 function cleanName(name = '') {
   return String(name)
@@ -39,6 +41,9 @@ export default function ProductCard({ product, dark = false }) {
   const title = cleanName(product.name);
   const swatches = useMemo(() => fabricVisuals(product), [product]);
   const availability = product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення';
+  const price = currentPrice(product);
+  const previousPrice = oldPrice(product);
+  const discounted = isDiscountActive(product);
 
   useEffect(() => {
     setFailedImages(new Set());
@@ -71,7 +76,7 @@ export default function ProductCard({ product, dark = false }) {
   return (
     <article className={`product-card-shell group ${dark ? 'text-milk' : 'text-espresso'}`}>
       <div className="product-card-media relative overflow-hidden">
-        <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem(product)] }); }} className="block h-full" data-tap-target="true">
+        <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem({ ...product, price })] }); }} className="block h-full" data-tap-target="true">
           {activeImage ? (
             <ProductImage src={activeImage} alt={product.imageAlt || product.name} sizes="(max-width: 767px) 50vw, (max-width: 1279px) 33vw, 28vw" quality={60} className="w-full h-full transition-transform duration-500 ease-out group-hover:scale-[1.018]" onError={handleImageError} />
           ) : (
@@ -81,12 +86,12 @@ export default function ProductCard({ product, dark = false }) {
 
         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-2 pointer-events-none">
           <div className="flex flex-col items-start gap-1.5 max-w-[72%]">
-            <span className="product-status-badge">{availability}</span>
-            {product.salePercent > 0 && <span className="product-sale-badge">−{product.salePercent}%</span>}
+            {discounted ? <DiscountBadge product={product} compact /> : <span className="product-status-badge">{availability}</span>}
+            {discounted && <span className="product-status-badge">{availability}</span>}
           </div>
           <div className="pointer-events-auto flex gap-2">
-            <button type="button" aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle({ productId: product.id, slug: product.slug, name: product.name, price: product.price, image: usableImages[0] || images[0] }); track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem(product)] }); }} className="ui-radius-sm w-11 h-11 bg-milk/95 backdrop-blur-md flex items-center justify-center text-espresso"><Heart className="w-[18px] h-[18px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
-            <button type="button" aria-label="Порівняти" onClick={(e)=>{e.preventDefault();e.stopPropagation();compare.toggle(product);track(inCompare?'compare_remove':'compare_add',{item_id:product.sku});}} className={`ui-radius-sm w-11 h-11 backdrop-blur-md flex items-center justify-center ${inCompare ? 'bg-espresso text-milk' : 'bg-milk/95 text-espresso'}`}><GitCompare className="w-[18px] h-[18px]" strokeWidth={1.45}/></button>
+            <button type="button" aria-label={inWishlist ? 'Видалити з обраного' : 'Додати в обране'} onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle({ productId: product.id, slug: product.slug, name: product.name, price, image: usableImages[0] || images[0] }); track(inWishlist ? 'remove_from_wishlist' : 'add_to_wishlist', { items: [buildItem({ ...product, price })] }); }} className="ui-radius-sm w-11 h-11 bg-milk/95 backdrop-blur-md flex items-center justify-center text-espresso"><Heart className="w-[18px] h-[18px]" fill={inWishlist ? 'currentColor' : 'none'} strokeWidth={1.45} /></button>
+            <button type="button" aria-label="Порівняти" onClick={(e)=>{e.preventDefault();e.stopPropagation();compare.toggle({ ...product, price });track(inCompare?'compare_remove':'compare_add',{item_id:product.sku});}} className={`ui-radius-sm w-11 h-11 backdrop-blur-md flex items-center justify-center ${inCompare ? 'bg-espresso text-milk' : 'bg-milk/95 text-espresso'}`}><GitCompare className="w-[18px] h-[18px]" strokeWidth={1.45}/></button>
           </div>
         </div>
 
@@ -103,13 +108,13 @@ export default function ProductCard({ product, dark = false }) {
         {product.reviewsCount > 0 && <div className="mt-2 text-[13px] text-mocha">★ {product.rating || 5} · {product.reviewsCount}</div>}
 
         <div className="mt-3 flex items-baseline flex-wrap gap-x-2">
-          <span className="product-card-price font-heading text-espresso">{Number(product.price || 0).toLocaleString('uk-UA')} ₴</span>
-          {product.oldPrice > product.price && <span className="text-[13px] line-through text-mocha">{Number(product.oldPrice).toLocaleString('uk-UA')} ₴</span>}
+          <span className={`product-card-price font-heading ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
+          {discounted && previousPrice > price && <span className="text-[13px] line-through text-mocha">{Number(previousPrice).toLocaleString('uk-UA')} ₴</span>}
         </div>
 
         {swatches.length > 0 && <div className="mt-3"><p className="text-[13px] text-mocha mb-2">Тканини / кольори</p><div className="flex gap-2" aria-label="Доступні кольори тканини">{swatches.map((s, i) => <span key={`${s.name}-${i}`} title={s.name} className="fabric-dot" style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: 'cover' } : { background: s.color }} />)}</div></div>}
 
-        <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem(product)] }); }} className="ui-action ui-radius-sm mt-4 w-full inline-flex items-center justify-center gap-2 px-4 text-[13px] uppercase tracking-[0.12em] font-semibold" data-tap-target="true">
+        <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem({ ...product, price })] }); }} className="ui-action ui-radius-sm mt-4 w-full inline-flex items-center justify-center gap-2 px-4 text-[13px] uppercase tracking-[0.12em] font-semibold" data-tap-target="true">
           <span>Купити</span><ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
         </Link>
       </div>
