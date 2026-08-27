@@ -74,8 +74,25 @@ function baseName(title = '') {
     .trim();
 }
 
+function canonicalBedModelName(title = '') {
+  const withoutSize = baseName(title)
+    .replace(/^ліжко\s+/i, '')
+    .replace(/^ліжка\s+/i, '')
+    .trim();
+
+  // Homefort merchant feed puts configuration options after the first comma,
+  // e.g. "Стелла-Кона, ПМ, Категорія 2, ЛК Стандарт 30". They are variants
+  // of one bed model and must not become separate catalog cards.
+  const model = withoutSize.split(',')[0]
+    .replace(/["'«»“”„]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return model || withoutSize;
+}
+
 function normalizedModelName(title = '') {
-  return baseName(title)
+  return canonicalBedModelName(title)
     .toLowerCase()
     .replace(/["'«»“”„]/g, '')
     .replace(/\s+/g, ' ')
@@ -94,21 +111,21 @@ function variantSize(block, title = '') {
 }
 
 function productGroupKey(block) {
-  const itemGroupId = field(block, 'item_group_id');
-  if (itemGroupId) return `merchant:${itemGroupId}`;
-
   const link = field(block, 'link');
   const title = field(block, 'title');
   const productType = field(block, 'product_type');
   const category = categoryFor(productType);
 
-  // Homefort exposes some size variants as separate URLs. For beds those
-  // URLs still describe one logical model, so use the model title without
-  // dimensions as the fallback group key.
+  // Beds are grouped by the actual model name, not by item_group_id. Homefort
+  // can assign separate group IDs/URLs to fabric category, lift mechanism,
+  // lamella type and size combinations of the same physical bed model.
   if (category === 'beds') {
     const model = normalizedModelName(title);
-    if (model) return `bed:${String(productType).toLowerCase().trim()}:${model}`;
+    if (model) return `bed:${model}`;
   }
+
+  const itemGroupId = field(block, 'item_group_id');
+  if (itemGroupId) return `merchant:${itemGroupId}`;
 
   return `url:${baseLink(link)}`;
 }
@@ -198,17 +215,20 @@ function parseFeed(xml = '') {
         ? Math.min(...prices)
         : 0;
 
-    const originalSlug = slugFromLink(firstLink || groupKey);
+    const modelName = category === 'beds' ? canonicalBedModelName(firstTitle) : baseName(firstTitle);
+    const originalSlug = category === 'beds'
+      ? `bed-${normalizedModelName(firstTitle).replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`
+      : slugFromLink(firstLink || groupKey);
     const usage = slugUsage.get(originalSlug) || 0;
     slugUsage.set(originalSlug, usage + 1);
     const slug = usage ? `${originalSlug}-${usage + 1}` : originalSlug;
     const brand = field(first, 'brand') || 'Homefort';
 
     products.push({
-      id: itemGroupId || field(first, 'id') || slug,
+      id: category === 'beds' ? slug : itemGroupId || field(first, 'id') || slug,
       itemGroupId,
       slug,
-      name: baseName(firstTitle),
+      name: modelName,
       category,
       originalProductType,
       productType: originalProductType,
@@ -268,6 +288,7 @@ function mergeCuratedBeds(products = []) {
         ...item,
         // Variant/stock/price data comes from the live feed and must not be
         // replaced by the old curated snapshot.
+        name: live.name || item.name,
         price: live.price ?? item.price,
         price_current: live.price_current ?? item.price_current,
         availability: live.availability ?? item.availability,
@@ -284,6 +305,7 @@ function mergeCuratedBeds(products = []) {
 
     result.push({
       ...item,
+      name: canonicalBedModelName(item.name || ''),
       category: 'beds',
       seller: 'DOMERA',
       manufacturer: item.manufacturer || 'Homefort',
