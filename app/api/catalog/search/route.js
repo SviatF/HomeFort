@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getHomefortProducts } from '@/lib/homefort-static';
+import { getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 
 function norm(value = '') {
   return String(value)
@@ -20,14 +20,14 @@ export async function GET(request) {
   const query = norm(raw.replace(/(?:до|under)?\s*\d{4,6}/i, ''));
   const tokens = query.split(' ').filter(Boolean);
 
-  const all = getHomefortProducts().filter((product) => product.indexable !== false && product.slug);
+  const all = (await getHomefortLiveProducts()).filter((product) => product.indexable !== false && product.slug);
   const ranked = all
     .filter((product) => !budget || Number(product.price || 0) <= budget)
     .map((product) => {
       const haystack = norm([product.name, product.slug, product.category, product.originalProductType, ...(product.sizes || [])].join(' '));
-      const exact = haystack.includes(query) ? 20 : 0;
+      const exact = query && haystack.includes(query) ? 20 : 0;
       const tokenScore = tokens.reduce((score, token) => score + (haystack.includes(token) ? 4 : 0), 0);
-      const starts = norm(product.name).startsWith(query) ? 8 : 0;
+      const starts = query && norm(product.name).startsWith(query) ? 8 : 0;
       return { product, score: exact + tokenScore + starts };
     })
     .filter((item) => item.score > 0)
