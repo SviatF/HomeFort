@@ -6,7 +6,7 @@ import { track, buildItem } from '@/lib/analytics';
 import { useWishlist } from '@/lib/WishlistContext';
 import { useCompare } from '@/lib/CompareContext';
 import ProductImage from '@/components/domera/ProductImage';
-import { DiscountBadge, InstallmentLine } from '@/components/domera/ProductPromoExperience';
+import { DiscountBadge } from '@/components/domera/ProductPromoExperience';
 import { currentPrice, isDiscountActive, oldPrice } from '@/lib/product-promo';
 
 function cleanName(name = '') {
@@ -111,7 +111,6 @@ export default function ProductCard({ product, dark = false }) {
           <span className={`product-card-price font-heading ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
           {discounted && previousPrice > price && <span className="text-[13px] line-through text-mocha">{Number(previousPrice).toLocaleString('uk-UA')} ₴</span>}
         </div>
-        <InstallmentLine product={product} price={price} compact />
 
         {swatches.length > 0 && <div className="mt-3"><p className="text-[13px] text-mocha mb-2">Тканини / кольори</p><div className="flex gap-2" aria-label="Доступні кольори тканини">{swatches.map((s, i) => <span key={`${s.name}-${i}`} title={s.name} className="fabric-dot" style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: 'cover' } : { background: s.color }} />)}</div></div>}
 
