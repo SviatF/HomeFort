@@ -1,7 +1,7 @@
 import 'server-only';
 import fs from 'node:fs';
 import path from 'node:path';
-import { gunzipSync } from 'node:zlib';
+import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib';
 
 let cachedPayload = null;
 
@@ -19,12 +19,26 @@ export const HOMEFORT_STATIC_CATEGORIES = {
   other: { key: 'other', name: 'Інше', h1: 'Інші товари', seoTitle: 'Інші товари | DOMERA', seoDescription: 'Інші товари з каталогу Homefort.', canonicalUrl: '/catalog/other', indexable: false },
 };
 
+function decodePayload(encoded) {
+  const input = Buffer.from(encoded, 'base64');
+  const decoders = [gunzipSync, brotliDecompressSync, inflateSync];
+  let lastError = null;
+  for (const decode of decoders) {
+    try {
+      return decode(input).toString('utf8');
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('Unknown feed compression format');
+}
+
 function loadPayload() {
   if (cachedPayload) return cachedPayload;
   try {
     const file = path.join(process.cwd(), 'src', 'data', 'homefort-feed.json.gz.b64');
     const encoded = fs.readFileSync(file, 'utf8').trim();
-    const json = gunzipSync(Buffer.from(encoded, 'base64')).toString('utf8');
+    const json = decodePayload(encoded);
     cachedPayload = JSON.parse(json);
     return cachedPayload;
   } catch (error) {
@@ -34,8 +48,9 @@ function loadPayload() {
 }
 
 function normalizeProduct(product = {}) {
-  const minVariantPrice = Math.min(...(product.variants || []).map((v) => Number(v.price || 0)).filter((v) => v > 0), Number(product.price || Infinity));
-  const price = Number.isFinite(minVariantPrice) ? minVariantPrice : Number(product.price || 0);
+  const variantPrices = (product.variants || []).map((v) => Number(v.price || 0)).filter((v) => v > 0);
+  const directPrice = Number(product.price || 0);
+  const price = variantPrices.length ? Math.min(...variantPrices, ...(directPrice > 0 ? [directPrice] : [])) : directPrice;
   return {
     ...product,
     price,
