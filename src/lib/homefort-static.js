@@ -37,7 +37,8 @@ function loadCuratedPayload() {
 
 export function getHomefortBeds() {
   const feedBeds = getHomefortFeedProducts('beds').map(normalizeProduct);
-  const curated = Array.isArray(loadCuratedPayload()?.products) ? loadCuratedPayload().products : [];
+  const curatedPayload = loadCuratedPayload();
+  const curated = Array.isArray(curatedPayload?.products) ? curatedPayload.products : [];
   const bySlug = new Map(feedBeds.filter((item) => item?.slug).map((item) => [item.slug, item]));
   for (const item of curated) {
     if (!item?.slug) continue;
@@ -54,7 +55,10 @@ export function getHomefortBedBySlug(slug) {
 
 export function getHomefortProductBySlug(slug) {
   if (!slug) return null;
-  return getHomefortBedBySlug(slug) || normalizeProduct(getHomefortFeedProductBySlug(slug) || {});
+  const bed = getHomefortBedBySlug(slug);
+  if (bed) return bed;
+  const feedProduct = getHomefortFeedProductBySlug(slug);
+  return feedProduct ? normalizeProduct(feedProduct) : null;
 }
 
 export function getHomefortProducts(category = null) {
