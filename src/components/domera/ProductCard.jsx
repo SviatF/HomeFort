@@ -40,7 +40,7 @@ export default function ProductCard({ product, dark = false }) {
   const hasGallery = usableImages.length > 1;
   const title = cleanName(product.name);
   const swatches = useMemo(() => fabricVisuals(product), [product]);
-  const availability = product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Під замовлення';
+  const availability = product.availability === 'in_stock' ? 'В наявності' : product.productionTime ? `Виготовлення ${product.productionTime}` : 'Немає в наявності';
   const price = currentPrice(product);
   const previousPrice = oldPrice(product);
   const discounted = isDiscountActive(product);
@@ -108,14 +108,14 @@ export default function ProductCard({ product, dark = false }) {
         {product.reviewsCount > 0 && <div className="mt-2 text-[13px] text-mocha">★ {product.rating || 5} · {product.reviewsCount}</div>}
 
         <div className="mt-3 flex items-baseline flex-wrap gap-x-2">
-          <span className={`product-card-price font-heading ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
+          <span className={`product-card-price font-heading ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{product.priceFrom ? 'від ' : ''}{price.toLocaleString('uk-UA')} ₴</span>
           {discounted && previousPrice > price && <span className="text-[13px] line-through text-mocha">{Number(previousPrice).toLocaleString('uk-UA')} ₴</span>}
         </div>
 
         {swatches.length > 0 && <div className="mt-3"><p className="text-[13px] text-mocha mb-2">Тканини / кольори</p><div className="flex gap-2" aria-label="Доступні кольори тканини">{swatches.map((s, i) => <span key={`${s.name}-${i}`} title={s.name} className="fabric-dot" style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: 'cover' } : { background: s.color }} />)}</div></div>}
 
         <Link to={`/product/${product.slug}`} onClick={() => { rememberScroll(); track('select_item', { items: [buildItem({ ...product, price })] }); }} className="ui-action ui-radius-sm mt-4 w-full inline-flex items-center justify-center gap-2 px-4 text-[13px] uppercase tracking-[0.12em] font-semibold" data-tap-target="true">
-          <span>Купити</span><ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
+          <span>Обрати комплектацію</span><ArrowUpRight className="w-4 h-4" strokeWidth={1.5} />
         </Link>
       </div>
     </article>
