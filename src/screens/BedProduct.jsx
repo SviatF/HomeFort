@@ -11,40 +11,66 @@ import { useCart } from '@/lib/CartContext';
 import { track, buildItem, trackMeta } from '@/lib/analytics';
 import { sizeMatches, sizeToSlug } from '@/lib/variant';
 
+const DIMENSIONS = [
+  { key: 'size', label: 'Розмір', query: 'size' },
+  { key: 'priceCategory', label: 'Категорія', query: 'category' },
+  { key: 'liftingMechanism', label: 'Підйомний механізм', query: 'lift' },
+  { key: 'frameOption', label: 'Основа / каркас', query: 'frame' },
+];
+
 function normalizeSize(value = '') {
   const match = String(value).toLowerCase().replace(/см/g, '').match(/(\d{2,3})\s*[×хx]\s*(\d{2,3})/);
   return match ? `${Number(match[1])}×${Number(match[2])}` : String(value || '').trim();
 }
 
-function uniqueSizes(product) {
-  const values = [
-    ...(product?.sizes || []),
-    ...((product?.variants || []).map((variant) => variant?.size)),
-  ]
-    .map(normalizeSize)
-    .filter(Boolean);
+function normalizedValue(key, value) {
+  if (value === null || value === undefined) return '';
+  return key === 'size' ? normalizeSize(value) : String(value).trim();
+}
+
+function matchesValue(variant, key, value) {
+  if (!value) return true;
+  if (key === 'size') return Boolean(variant?.size && sizeMatches(variant.size, value));
+  return normalizedValue(key, variant?.[key]) === normalizedValue(key, value);
+}
+
+function bestVariant(variants = []) {
+  if (!variants.length) return null;
+  const stocked = variants.filter((variant) => variant.availability === 'in_stock');
+  return [...(stocked.length ? stocked : variants)].sort((a, b) => Number(a.price || 0) - Number(b.price || 0))[0] || null;
+}
+
+function selectionFromVariant(variant) {
+  return Object.fromEntries(DIMENSIONS.map(({ key }) => [key, normalizedValue(key, variant?.[key])]));
+}
+
+function valuesForDimension(product, selections, dimensionIndex) {
+  const { key } = DIMENSIONS[dimensionIndex];
+  let variants = Array.isArray(product?.variants) ? product.variants : [];
+
+  for (let index = 0; index < dimensionIndex; index += 1) {
+    const previousKey = DIMENSIONS[index].key;
+    const value = selections?.[previousKey];
+    if (value) variants = variants.filter((variant) => matchesValue(variant, previousKey, value));
+  }
+
+  const values = variants.map((variant) => normalizedValue(key, variant?.[key])).filter(Boolean);
   return [...new Set(values)];
 }
 
-function variantForSize(product, size) {
+function findSelectedVariant(product, selections) {
   const variants = Array.isArray(product?.variants) ? product.variants : [];
-  if (!variants.length) return null;
-  if (!size) return variants.find((variant) => variant.availability === 'in_stock') || variants[0];
-  const matched = variants.filter((variant) => variant?.size && sizeMatches(variant.size, size));
-  return matched.find((variant) => variant.availability === 'in_stock') || matched[0] || null;
+  const matches = variants.filter((variant) => DIMENSIONS.every(({ key }) => matchesValue(variant, key, selections?.[key])));
+  return bestVariant(matches) || bestVariant(variants);
 }
 
 export default function BedProduct({ initialProduct, initialRelated = [] }) {
   const product = initialProduct;
   const { add, open } = useCart();
-  const sizes = useMemo(() => uniqueSizes(product), [product]);
-  const defaultVariant = useMemo(
-    () => (product?.variants || []).find((variant) => variant.availability === 'in_stock') || product?.variants?.[0] || null,
-    [product],
-  );
-  const [size, setSize] = useState(normalizeSize(defaultVariant?.size || sizes[0] || ''));
+  const defaultVariant = useMemo(() => bestVariant(product?.variants || []), [product]);
+  const [selections, setSelections] = useState(() => selectionFromVariant(defaultVariant));
   const [activeImage, setActiveImage] = useState(0);
-  const selectedVariant = useMemo(() => variantForSize(product, size) || defaultVariant, [product, size, defaultVariant]);
+  const selectedVariant = useMemo(() => findSelectedVariant(product, selections), [product, selections]);
 
   const price = Number(selectedVariant?.price || product?.price_current || product?.price || 0);
   const previousPrice = Number(selectedVariant?.oldPrice || product?.price_old || product?.oldPrice || 0);
@@ -53,21 +79,55 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
   const inStock = selectedVariant?.availability
     ? selectedVariant.availability === 'in_stock'
     : product?.availability === 'in_stock';
+  const size = selections.size || '';
+
+  const dimensionOptions = useMemo(
+    () => DIMENSIONS.map((dimension, index) => ({ ...dimension, values: valuesForDimension(product, selections, index) })),
+    [product, selections],
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !product) return;
+    setSelections(selectionFromVariant(defaultVariant));
+    setActiveImage(0);
+  }, [product?.id, defaultVariant?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !product || !defaultVariant) return;
     const params = new URLSearchParams(window.location.search);
-    const querySize = normalizeSize(params.get('size') || '');
-    if (querySize && sizes.some((candidate) => sizeMatches(candidate, querySize))) setSize(querySize);
-  }, [product?.id]);
+    let next = selectionFromVariant(defaultVariant);
+
+    DIMENSIONS.forEach(({ key, query }, index) => {
+      const raw = params.get(query);
+      if (!raw) return;
+      const value = normalizedValue(key, raw);
+      const allowed = valuesForDimension(product, next, index);
+      if (!allowed.some((candidate) => key === 'size' ? sizeMatches(candidate, value) : candidate === value)) return;
+      next[key] = value;
+
+      const compatible = (product.variants || []).filter((variant) =>
+        DIMENSIONS.slice(0, index + 1).every(({ key: previousKey }) => matchesValue(variant, previousKey, next[previousKey])),
+      );
+      const candidate = bestVariant(compatible);
+      if (candidate) {
+        DIMENSIONS.slice(index + 1).forEach(({ key: followingKey }) => {
+          next[followingKey] = normalizedValue(followingKey, candidate[followingKey]);
+        });
+      }
+    });
+
+    setSelections(next);
+  }, [product?.id, defaultVariant?.id]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !product) return;
     const url = new URL(window.location.href);
-    if (size) url.searchParams.set('size', size);
-    else url.searchParams.delete('size');
+    DIMENSIONS.forEach(({ key, query }) => {
+      const value = selections[key];
+      if (value) url.searchParams.set(query, value);
+      else url.searchParams.delete(query);
+    });
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
-  }, [size, product?.id]);
+  }, [selections, product?.id]);
 
   useEffect(() => {
     if (!product || !selectedVariant) return;
@@ -87,6 +147,23 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
 
   if (!product) return null;
 
+  const selectDimension = (dimensionIndex, value) => {
+    const key = DIMENSIONS[dimensionIndex].key;
+    setSelections((current) => {
+      const next = { ...current, [key]: value };
+      const compatible = (product.variants || []).filter((variant) =>
+        DIMENSIONS.slice(0, dimensionIndex + 1).every(({ key: previousKey }) => matchesValue(variant, previousKey, next[previousKey])),
+      );
+      const candidate = bestVariant(compatible);
+      if (candidate) {
+        DIMENSIONS.slice(dimensionIndex + 1).forEach(({ key: followingKey }) => {
+          next[followingKey] = normalizedValue(followingKey, candidate[followingKey]);
+        });
+      }
+      return next;
+    });
+  };
+
   const addToCart = () => {
     const variantSKU = selectedVariant?.sku || selectedVariant?.id || product.sku || product.id;
     add({
@@ -95,8 +172,11 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
       slug: product.slug,
       name: product.name,
       price,
-      image: selectedVariant?.image || product.images?.[0],
+      image: product.images?.[0],
       size,
+      priceCategory: selections.priceCategory || null,
+      liftingMechanism: selections.liftingMechanism || null,
+      frameOption: selections.frameOption || null,
       qty: 1,
     });
     track('add_to_cart', {
@@ -153,42 +233,45 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
                   <span className={`font-heading text-[42px] leading-none ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
                   {discounted && <span className="text-lg text-mocha line-through">{previousPrice.toLocaleString('uk-UA')} ₴</span>}
                 </div>
-                {sizes.length > 1 && <p className="mt-2 text-sm text-mocha">Ціна автоматично змінюється відповідно до вибраного розміру.</p>}
+                {(product.variants || []).length > 1 && <p className="mt-2 text-sm text-mocha">Ціна автоматично змінюється відповідно до вибраної комплектації.</p>}
               </div>
 
-              {sizes.length > 0 && (
-                <div className="mt-8">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="text-[11px] tracking-[0.2em] uppercase text-mocha">Оберіть розмір</p>
-                    {size && <span className="text-sm text-espresso font-medium">{size}</span>}
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {sizes.map((candidate) => {
-                      const variant = variantForSize(product, candidate);
-                      const active = sizeMatches(candidate, size);
-                      const unavailable = variant?.availability === 'out_of_stock';
-                      return (
-                        <button
-                          key={candidate}
-                          type="button"
-                          onClick={() => {
-                            setSize(candidate);
-                            track('select_size', { item_id: product.sku || product.id, size: candidate, price: Number(variant?.price || 0) });
-                          }}
-                          className={`ui-radius-sm min-h-14 px-3 py-2 border text-sm text-left transition-all ${active ? 'border-espresso bg-espresso text-milk' : 'border-espresso/15 text-espresso hover:border-espresso/50'} ${unavailable ? 'opacity-50' : ''}`}
-                        >
-                          <span className="block font-medium">{candidate}</span>
-                          {variant?.price > 0 && <span className={`block mt-1 text-xs ${active ? 'text-milk/70' : 'text-mocha'}`}>{Number(variant.price).toLocaleString('uk-UA')} ₴</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {size && (
-                    <Link to={`/catalog/beds/${sizeToSlug(size)}`} className="mt-4 inline-flex items-center gap-2 text-xs text-mocha underline underline-offset-4">
-                      Дивитись усі ліжка {size} <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  )}
-                </div>
+              <div className="mt-8 space-y-7">
+                {dimensionOptions.map((dimension, dimensionIndex) => {
+                  if (!dimension.values.length) return null;
+                  const currentValue = selections[dimension.key];
+                  return (
+                    <div key={dimension.key}>
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <p className="text-[11px] tracking-[0.2em] uppercase text-mocha">{dimension.label}</p>
+                        {currentValue && <span className="text-sm text-espresso font-medium">{currentValue}</span>}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {dimension.values.map((value) => {
+                          const active = dimension.key === 'size'
+                            ? Boolean(currentValue && sizeMatches(value, currentValue))
+                            : currentValue === value;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => selectDimension(dimensionIndex, value)}
+                              className={`ui-radius-sm min-h-12 px-4 py-2 border text-sm transition-all ${active ? 'border-espresso bg-espresso text-milk' : 'border-espresso/15 text-espresso hover:border-espresso/50'}`}
+                            >
+                              {dimension.key === 'priceCategory' ? `Категорія ${value}` : value}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {size && (
+                <Link to={`/catalog/beds/${sizeToSlug(size)}`} className="mt-5 inline-flex items-center gap-2 text-xs text-mocha underline underline-offset-4">
+                  Дивитись усі ліжка {size} <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               )}
 
               <button
@@ -202,7 +285,7 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
               </button>
 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-px bg-espresso/10 border border-espresso/10">
-                <div className="bg-milk px-4 py-4 flex gap-3 items-start"><Check className="w-4 h-4 mt-0.5 text-espresso"/><div><p className="text-xs font-semibold text-espresso">Актуальна ціна</p><p className="text-[11px] text-mocha mt-1">Для вибраного розміру</p></div></div>
+                <div className="bg-milk px-4 py-4 flex gap-3 items-start"><Check className="w-4 h-4 mt-0.5 text-espresso"/><div><p className="text-xs font-semibold text-espresso">Точна ціна</p><p className="text-[11px] text-mocha mt-1">Для вибраного варіанта</p></div></div>
                 <div className="bg-milk px-4 py-4 flex gap-3 items-start"><Truck className="w-4 h-4 mt-0.5 text-espresso"/><div><p className="text-xs font-semibold text-espresso">Доставка</p><p className="text-[11px] text-mocha mt-1">По Україні</p></div></div>
                 <div className="bg-milk px-4 py-4 flex gap-3 items-start"><ShieldCheck className="w-4 h-4 mt-0.5 text-espresso"/><div><p className="text-xs font-semibold text-espresso">Homefort</p><p className="text-[11px] text-mocha mt-1">Оригінальна модель</p></div></div>
               </div>
