@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from '@/lib/router';
 import { Check, Truck, ShieldCheck, ArrowRight, Phone } from 'lucide-react';
 import Header from '@/components/domera/Header';
@@ -66,6 +66,52 @@ function findSelectedVariant(product, selections) {
   return bestVariant(matches) || bestVariant(variants);
 }
 
+function useAnimatedNumber(value, duration = 360) {
+  const target = Number(value || 0);
+  const [displayValue, setDisplayValue] = useState(target);
+  const displayRef = useRef(target);
+
+  useEffect(() => {
+    const next = Number(value || 0);
+    const from = Number(displayRef.current || 0);
+
+    if (from === next) {
+      setDisplayValue(next);
+      return undefined;
+    }
+
+    if (typeof window === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      displayRef.current = next;
+      setDisplayValue(next);
+      return undefined;
+    }
+
+    let frameId;
+    const startedAt = performance.now();
+
+    const tick = (now) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(from + (next - from) * eased);
+
+      displayRef.current = current;
+      setDisplayValue(current);
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      } else {
+        displayRef.current = next;
+        setDisplayValue(next);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [value, duration]);
+
+  return displayValue;
+}
+
 export default function BedProduct({ initialProduct, initialRelated = [] }) {
   const product = initialProduct;
   const { add, open } = useCart();
@@ -77,6 +123,8 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
 
   const price = Number(selectedVariant?.price || product?.price_current || product?.price || 0);
   const previousPrice = Number(selectedVariant?.oldPrice || product?.price_old || product?.oldPrice || 0);
+  const animatedPrice = useAnimatedNumber(price);
+  const animatedPreviousPrice = useAnimatedNumber(previousPrice);
   const discounted = previousPrice > price && price > 0;
   const salePercent = discounted ? Math.round((1 - price / previousPrice) * 100) : 0;
   const inStock = selectedVariant?.availability
@@ -261,14 +309,14 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
 
               <div className="mt-6">
                 <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className={`font-heading text-[42px] font-semibold leading-none ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
-                  {discounted && <span className="text-lg text-mocha line-through">{previousPrice.toLocaleString('uk-UA')} ₴</span>}
+                  <span className={`font-heading text-[42px] font-semibold leading-none tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{animatedPrice.toLocaleString('uk-UA')} ₴</span>
+                  {discounted && <span className="text-lg text-mocha line-through tabular-nums">{animatedPreviousPrice.toLocaleString('uk-UA')} ₴</span>}
                   {discounted && <span className="bg-[#C8643B]/10 px-2 py-1 text-[11px] font-semibold text-[#A34E2F]">−{salePercent}%</span>}
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-mocha">Остаточну суму та доступні способи оплати підтвердимо при оформленні.</p>
               </div>
 
-              <BankInstallmentBlock product={installmentProduct} price={price} />
+              <BankInstallmentBlock product={installmentProduct} price={animatedPrice} />
 
               <div className="mt-8 space-y-7">
                 {dimensionOptions.map((dimension, dimensionIndex) => {
@@ -370,8 +418,8 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
           <div className="hidden min-w-0 md:block">
             <p className="truncate text-[11px] text-mocha">{size ? `${size} · ` : ''}{product.name}</p>
             <div className="mt-0.5 flex items-baseline gap-2">
-              <span className={`font-heading text-[24px] font-semibold ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
-              {discounted && <span className="text-[12px] text-mocha line-through">{previousPrice.toLocaleString('uk-UA')} ₴</span>}
+              <span className={`font-heading text-[24px] font-semibold tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{animatedPrice.toLocaleString('uk-UA')} ₴</span>
+              {discounted && <span className="text-[12px] text-mocha line-through tabular-nums">{animatedPreviousPrice.toLocaleString('uk-UA')} ₴</span>}
             </div>
           </div>
 
