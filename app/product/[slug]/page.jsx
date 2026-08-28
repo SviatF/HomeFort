@@ -1,15 +1,27 @@
-import { notFound } from 'next/navigation';
+import { cache } from 'react';
+import { notFound, redirect } from 'next/navigation';
 import Product from '@/screens/Product';
 import { getHomefortLiveProductBySlug, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
 import { buildMetadata, breadcrumbSchema, productSchema } from '@/lib/seo';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 function normalizeSize(value = '') {
   const match = String(value).toLowerCase().replace(/см/g, '').match(/(\d{2,3})\s*[×хx]\s*(\d{2,3})/);
   return match ? `${match[1]}x${match[2]}` : '';
 }
 
-async function getProductData(slug) {
+function decodedSlug(value = '') {
+  try {
+    return decodeURIComponent(String(value));
+  } catch {
+    return String(value);
+  }
+}
+
+const getProductData = cache(async (slug) => {
   const product = await getHomefortLiveProductBySlug(slug);
   if (!product) return { product: null, related: [], mattresses: [], crossSell: [] };
 
@@ -30,7 +42,7 @@ async function getProductData(slug) {
     mattresses,
     crossSell: [],
   };
-}
+});
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -58,6 +70,12 @@ export default async function Page({ params }) {
   const { slug } = await params;
   const data = await getProductData(slug);
   if (!data.product) notFound();
+
+  const requestedSlug = decodedSlug(slug);
+  if (data.product.slug && data.product.slug !== requestedSlug) {
+    redirect(`/product/${data.product.slug}`);
+  }
+
   const p = data.product;
   const category = getHomefortFeedCategory(p.category);
 
