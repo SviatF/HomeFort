@@ -47,20 +47,45 @@ function loadPayload() {
   }
 }
 
+function parseMoney(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (value == null || value === '') return 0;
+
+  const normalized = String(value)
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function normalizeProduct(product = {}) {
-  const variantPrices = (product.variants || []).map((v) => Number(v.price || 0)).filter((v) => v > 0);
-  const directPrice = Number(product.price || 0);
-  const price = variantPrices.length ? Math.min(...variantPrices, ...(directPrice > 0 ? [directPrice] : [])) : directPrice;
+  const variants = Array.isArray(product.variants)
+    ? product.variants.map((variant) => ({
+        ...variant,
+        price: parseMoney(variant?.price ?? variant?.price_current),
+        price_current: parseMoney(variant?.price_current ?? variant?.price),
+      }))
+    : [];
+
+  const variantPrices = variants.map((variant) => variant.price).filter((value) => value > 0);
+  const directPrice = parseMoney(product.price ?? product.price_current);
+  const price = variantPrices.length
+    ? Math.min(...variantPrices, ...(directPrice > 0 ? [directPrice] : []))
+    : directPrice;
+  const current = parseMoney(product.price_current ?? price) || price;
+
   return {
     ...product,
     price,
-    price_current: Number(product.price_current || price || 0),
+    price_current: current,
     brand: product.brand || 'Homefort',
     manufacturer: product.manufacturer || 'Homefort',
     seller: product.seller || 'DOMERA',
     images: Array.isArray(product.images) ? product.images.filter(Boolean) : [],
     sizes: Array.isArray(product.sizes) ? product.sizes.filter(Boolean) : [],
-    variants: Array.isArray(product.variants) ? product.variants : [],
+    variants,
     indexable: product.indexable !== false,
   };
 }
