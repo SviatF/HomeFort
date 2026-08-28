@@ -38,18 +38,24 @@ function parsePrice(value = '') {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function categoryFor(productType = '') {
+function categoryFor(productType = '', title = '') {
   const t = String(productType).toLowerCase();
-  if (t.startsWith('ліжка') || t === 'ліжка') return 'beds';
-  if (t.includes('матрац') && (t.includes('дитяч') || t.includes('підлітк'))) return 'kids-mattresses';
-  if (t.includes('наматрац') || t.includes('топпер')) return 'toppers';
-  if (t.startsWith('матраци') || t === 'матраци') return 'mattresses';
-  if (t.includes('подуш')) return 'pillows';
-  if (t.includes('ковдр')) return 'duvets';
-  if (['табурет', 'стільц', 'лофт меб', 'диван', 'лавк', 'корпусні меб'].some((key) => t.includes(key))) return 'furniture';
-  if (['ніжки до меблів', 'деталі до меблів', 'супутні матеріали'].some((key) => t.includes(key))) return 'parts';
-  if (['косметич', 'для тварин'].some((key) => t.includes(key))) return 'accessories';
-  if (t.includes('послуг')) return 'services';
+  const n = String(title).toLowerCase();
+  const contains = (needle) => t.includes(needle) || n.includes(needle);
+
+  // Specific product families must win over broad Merchant category paths.
+  // Some feed rows have a hierarchy beginning with "Ліжка", even when the
+  // actual product is a mattress/duvet/pillow.
+  if (contains('наматрац') || contains('топпер')) return 'toppers';
+  if (contains('матрац') && (contains('дитяч') || contains('підлітк'))) return 'kids-mattresses';
+  if (contains('матрац')) return 'mattresses';
+  if (contains('подуш')) return 'pillows';
+  if (contains('ковдр')) return 'duvets';
+  if (t.includes('ліжк') || n.startsWith('ліжко ') || n.startsWith('ліжка ')) return 'beds';
+  if (['табурет', 'стільц', 'лофт меб', 'диван', 'лавк', 'корпусні меб'].some((key) => contains(key))) return 'furniture';
+  if (['ніжки до меблів', 'деталі до меблів', 'супутні матеріали'].some((key) => contains(key))) return 'parts';
+  if (['косметич', 'для тварин'].some((key) => contains(key))) return 'accessories';
+  if (contains('послуг')) return 'services';
   return 'other';
 }
 
@@ -96,6 +102,34 @@ function normalizedModelName(title = '') {
     .trim();
 }
 
+const CYRILLIC_TO_LATIN = {
+  а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ye', ж: 'zh', з: 'z',
+  и: 'y', і: 'i', ї: 'yi', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p',
+  р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh',
+  щ: 'shch', ь: '', ю: 'yu', я: 'ya', ё: 'yo', ы: 'y', э: 'e', ъ: '',
+};
+
+function latinSlug(value = '') {
+  return String(value)
+    .toLowerCase()
+    .split('')
+    .map((char) => CYRILLIC_TO_LATIN[char] ?? char)
+    .join('')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’`]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function legacyBedSlug(value = '') {
+  return `bed-${normalizedModelName(value).replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`;
+}
+
+function canonicalBedSlug(value = '') {
+  return `bed-${latinSlug(normalizedModelName(value))}`;
+}
+
 function normalizeSize(value = '') {
   const match = String(value).match(sizeRe);
   return match ? `${match[1]}×${match[2]}` : String(value || '').trim();
@@ -112,7 +146,7 @@ function productGroupKey(block) {
   const link = field(block, 'link');
   const title = field(block, 'title');
   const productType = field(block, 'product_type');
-  const category = categoryFor(productType);
+  const category = categoryFor(productType, title);
   if (category === 'beds') {
     const model = normalizedModelName(title);
     if (model) return `bed:${model}`;
@@ -136,8 +170,8 @@ function sortSizes(values = []) {
 function buildProduct(blocks, groupKey, slugUsage) {
   const first = blocks[0];
   const originalProductType = field(first, 'product_type');
-  const category = categoryFor(originalProductType);
   const firstTitle = field(first, 'title');
+  const category = categoryFor(originalProductType, firstTitle);
   const description = field(first, 'description');
   const itemGroupId = field(first, 'item_group_id') || null;
   const firstLink = field(first, 'link');
@@ -180,7 +214,7 @@ function buildProduct(blocks, groupKey, slugUsage) {
   const minPrice = availablePrices.length ? Math.min(...availablePrices) : prices.length ? Math.min(...prices) : 0;
   const modelName = category === 'beds' ? canonicalBedModelName(firstTitle) : baseName(firstTitle);
   const originalSlug = category === 'beds'
-    ? `bed-${normalizedModelName(firstTitle).replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`
+    ? canonicalBedSlug(firstTitle)
     : slugFromLink(firstLink || groupKey);
   const usage = slugUsage.get(originalSlug) || 0;
   slugUsage.set(originalSlug, usage + 1);
@@ -247,10 +281,14 @@ function mergeCuratedBeds(products = []) {
     const index = bySlug.get(item.slug) ?? byName.get(normalizedModelName(item.name || ''));
     if (index !== undefined) {
       const live = result[index] || {};
+      const name = live.name || item.name;
+      const slug = canonicalBedSlug(name);
       result[index] = {
         ...live,
         ...item,
-        name: live.name || item.name,
+        id: slug,
+        slug,
+        name,
         price: live.price ?? item.price,
         price_current: live.price_current ?? item.price_current,
         availability: live.availability ?? item.availability,
@@ -285,7 +323,7 @@ function collapseStaticBedProducts(products = []) {
     const availablePrices = variants.filter((v) => v.availability === 'in_stock' && Number(v.price) > 0).map((v) => Number(v.price));
     const allPrices = variants.filter((v) => Number(v.price) > 0).map((v) => Number(v.price));
     const price = availablePrices.length ? Math.min(...availablePrices) : allPrices.length ? Math.min(...allPrices) : Number(first.price || first.price_current || 0);
-    const slug = `bed-${key.replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-+|-+$/g, '')}`;
+    const slug = canonicalBedSlug(first.name || first.title || key);
     return {
       ...first,
       id: slug,
@@ -336,8 +374,16 @@ export async function getHomefortLiveProducts(category = null) {
 
 export async function getHomefortLiveProductBySlug(slug) {
   if (!slug) return null;
+  let requested = String(slug);
+  try {
+    requested = decodeURIComponent(requested);
+  } catch {}
+
   const products = await getHomefortLiveProducts();
-  return products.find((product) => product.slug === slug) || null;
+  return products.find((product) => product.slug === requested)
+    || products.find((product) => product.category === 'beds' && canonicalBedSlug(product.name) === requested)
+    || products.find((product) => product.category === 'beds' && legacyBedSlug(product.name) === requested)
+    || null;
 }
 
 export async function getHomefortLiveCategoryKeys() {
