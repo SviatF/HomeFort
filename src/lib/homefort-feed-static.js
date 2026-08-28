@@ -19,13 +19,39 @@ export const HOMEFORT_STATIC_CATEGORIES = {
   other: { key: 'other', name: 'Інше', h1: 'Інші товари', seoTitle: 'Інші товари | DOMERA', seoDescription: 'Інші товари з каталогу Homefort.', canonicalUrl: '/catalog/other', indexable: false },
 };
 
+function validJsonText(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  try {
+    JSON.parse(text);
+    return text;
+  } catch {
+    return null;
+  }
+}
+
 function decodePayload(encoded) {
+  const directJson = validJsonText(encoded);
+  if (directJson) return directJson;
+
   const input = Buffer.from(encoded, 'base64');
-  const decoders = [gunzipSync, brotliDecompressSync, inflateSync];
+  const base64Json = validJsonText(input.toString('utf8'));
+  if (base64Json) return base64Json;
+
+  const decoders = [
+    () => gunzipSync(input),
+    // Some previously uploaded snapshots have a damaged/missing gzip trailer.
+    // Z_SYNC_FLUSH still recovers the complete JSON body in that case.
+    () => gunzipSync(input, { finishFlush: 2 }),
+    () => brotliDecompressSync(input),
+    () => inflateSync(input),
+  ];
   let lastError = null;
   for (const decode of decoders) {
     try {
-      return decode(input).toString('utf8');
+      const json = validJsonText(decode().toString('utf8'));
+      if (json) return json;
+      lastError = new Error('Decoded Homefort snapshot is not valid JSON');
     } catch (error) {
       lastError = error;
     }
