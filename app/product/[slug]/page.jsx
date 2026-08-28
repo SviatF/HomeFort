@@ -1,17 +1,12 @@
 import { cache } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import Product from '@/screens/Product';
+import BedProduct from '@/screens/BedProduct';
 import { getHomefortLiveProductBySlug, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
 import { buildMetadata, breadcrumbSchema, productSchema } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-function normalizeSize(value = '') {
-  const match = String(value).toLowerCase().replace(/см/g, '').match(/(\d{2,3})\s*[×хx]\s*(\d{2,3})/);
-  return match ? `${match[1]}x${match[2]}` : '';
-}
 
 function decodedSlug(value = '') {
   try {
@@ -23,24 +18,16 @@ function decodedSlug(value = '') {
 
 const getProductData = cache(async (slug) => {
   const product = await getHomefortLiveProductBySlug(slug);
-  if (!product) return { product: null, related: [], mattresses: [], crossSell: [] };
+  if (!product || product.category !== 'beds') return { product: null, related: [] };
 
-  const relatedAll = (await getHomefortLiveProducts(product.category)).filter((p) => p.indexable !== false && p.slug !== product.slug);
-  const productSizes = new Set((product.sizes || []).map(normalizeSize).filter(Boolean));
-  const mattresses = product.category === 'beds'
-    ? (await getHomefortLiveProducts('mattresses'))
-        .filter((m) => (m.sizes || []).some((size) => productSizes.has(normalizeSize(size))))
-        .sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
-        .slice(0, 2)
-    : [];
+  const relatedAll = (await getHomefortLiveProducts('beds'))
+    .filter((item) => item.indexable !== false && item.slug !== product.slug);
 
   return {
     product,
     related: relatedAll
       .sort((a, b) => Math.abs(Number(a.price || 0) - Number(product.price || 0)) - Math.abs(Number(b.price || 0) - Number(product.price || 0)))
       .slice(0, 3),
-    mattresses,
-    crossSell: [],
   };
 });
 
@@ -51,9 +38,9 @@ export async function generateMetadata({ params }) {
 
   const price = Number(product.price_current || product.price || 0);
   const title = product.seoTitle || `${product.name} — купити від ${price.toLocaleString('uk-UA')} ₴ | DOMERA`;
-  const description = product.seoDescription || product.shortDescription || product.fullDescription || `${product.name} у DOMERA. Ціна від ${price.toLocaleString('uk-UA')} ₴. Доставка по Україні.`;
+  const description = product.seoDescription || product.shortDescription || `${product.name} у DOMERA. Доступні розміри та актуальні ціни з Merchant feed Homefort.`;
   const canonical = product.canonicalUrl || `/product/${product.slug}`;
-  const sizeKeywords = (product.sizes || []).slice(0, 6).map((s) => `${product.name} ${s}`);
+  const sizeKeywords = (product.sizes || []).slice(0, 8).map((size) => `${product.name} ${size}`);
 
   return buildMetadata({
     title,
@@ -76,20 +63,19 @@ export default async function Page({ params }) {
     redirect(`/product/${data.product.slug}`);
   }
 
-  const p = data.product;
-  const category = getHomefortFeedCategory(p.category);
-
+  const product = data.product;
+  const category = getHomefortFeedCategory('beds');
   const schemas = [
-    productSchema(p),
+    productSchema(product),
     breadcrumbSchema([
       { name: 'Головна', url: '/' },
-      { name: category?.name || 'Каталог', url: `/catalog/${p.category}` },
-      { name: p.name, url: `/product/${p.slug}` },
+      { name: category?.name || 'Ліжка', url: '/catalog/beds' },
+      { name: product.name, url: `/product/${product.slug}` },
     ]),
   ];
 
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
-    <Product initialProduct={p} initialRelated={data.related} initialMattresses={data.mattresses} initialCrossSell={data.crossSell} />
+    <BedProduct initialProduct={product} initialRelated={data.related} />
   </>;
 }
