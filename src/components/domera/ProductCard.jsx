@@ -29,7 +29,7 @@ function fabricVisuals(product) {
 
 function AvailabilityBadge({ children }) {
   return (
-    <span className="inline-flex min-h-[27px] items-center rounded-[8px] border border-[#ded2c5]/75 bg-[#fffdf9]/90 px-2.5 py-1 text-[10px] font-medium leading-none tracking-[0.015em] text-[#66594e] shadow-[0_2px_10px_rgba(53,37,26,0.035)] backdrop-blur-md md:text-[11px]">
+    <span className="inline-flex min-h-[23px] items-center rounded-[7px] border border-[#e4d9ce]/65 bg-[#fffdf9]/82 px-2 py-0.5 text-[9px] font-normal leading-none tracking-[0.01em] text-[#75695f] shadow-[0_1px_7px_rgba(53,37,26,0.025)] backdrop-blur-md md:text-[10px]">
       {children}
     </span>
   );
