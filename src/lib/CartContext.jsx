@@ -37,6 +37,9 @@ export function CartProvider({ children }) {
       return [...prev, { ...item, qty: item.qty || 1, lineId: key }];
     });
     showToast({ type: 'added', message: 'Додано в кошик' }, 1200);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('domera:cart-add', { detail: { ...item } }));
+    }
   };
 
   const remove = (lineId) => {
