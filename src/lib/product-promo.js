@@ -25,6 +25,8 @@ export function isDiscountActive(product = {}, now = Date.now()) {
 
 export function discountPercent(product = {}) {
   if (!isDiscountActive(product)) return 0;
+  const explicit = Number(product.discountPercent ?? product.salePercent ?? product.discount_percent ?? 0);
+  if (Number.isFinite(explicit) && explicit > 0 && explicit < 100) return Math.round(explicit);
   return Math.max(1, Math.round((1 - currentPrice(product) / oldPrice(product)) * 100));
 }
 
