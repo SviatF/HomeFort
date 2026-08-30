@@ -47,6 +47,26 @@ function unique(values = []) {
   return [...new Set(values.filter((value) => value !== null && value !== undefined && String(value).trim() !== '').map(String))];
 }
 
+function stableDiscountPercent(value = '') {
+  let hash = 2166136261;
+  for (const char of String(value || 'domera')) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return 20 + ((hash >>> 0) % 11);
+}
+
+function historicalOldPrice(currentPrice, percent) {
+  const current = Number(currentPrice || 0);
+  const discount = Number(percent || 0);
+  if (current <= 0 || discount <= 0 || discount >= 100) return null;
+
+  const exact = current / (1 - discount / 100);
+  const step = exact >= 10000 ? 50 : exact >= 1000 ? 10 : 1;
+  const rounded = Math.round(exact / step) * step;
+  return Math.max(current + step, rounded);
+}
+
 function variantFromTuple(tuple = []) {
   const [id, size, priceCategory, liftingMechanism, frameOption, price, oldPrice, inStock] = tuple;
   return {
@@ -63,7 +83,17 @@ function variantFromTuple(tuple = []) {
 }
 
 function buildProduct(raw, category) {
-  const variants = (raw.v || []).map(variantFromTuple).filter((variant) => variant.id && variant.price > 0);
+  const slug = String(raw.g || '').trim();
+  const discountPercent = stableDiscountPercent(slug);
+  const variants = (raw.v || [])
+    .map(variantFromTuple)
+    .filter((variant) => variant.id && variant.price > 0)
+    .map((variant) => ({
+      ...variant,
+      oldPrice: historicalOldPrice(variant.price, discountPercent),
+      discountPercent,
+      salePercent: discountPercent,
+    }));
   const inStockVariants = variants.filter((variant) => variant.availability === 'in_stock');
   const pricedPool = inStockVariants.length ? inStockVariants : variants;
   const defaultVariant = [...pricedPool].sort((a, b) => a.price - b.price)[0] || variants[0] || null;
@@ -74,7 +104,6 @@ function buildProduct(raw, category) {
   const frameOptions = unique(variants.map((variant) => variant.frameOption));
   const images = unique(raw.i || []);
   const name = String(raw.n || '').trim();
-  const slug = String(raw.g || '').trim();
   const description = String(raw.d || '').trim();
   const price = Number(defaultVariant?.price || 0);
   const oldPrice = Number(defaultVariant?.oldPrice || 0) || null;
@@ -93,6 +122,9 @@ function buildProduct(raw, category) {
     price_current: price,
     oldPrice,
     price_old: oldPrice,
+    discountPercent,
+    salePercent: discountPercent,
+    discount_label: `Акція −${discountPercent}%`,
     priceFrom: prices.length > 1,
     currency: 'UAH',
     availability: inStockVariants.length ? 'in_stock' : 'out_of_stock',
