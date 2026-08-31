@@ -333,7 +333,7 @@ export default function ConversionSuitePortal({ product, recommendations = {} })
       track('consultation_popup_view', { item_id: product.sku || product.id, item_category: product.category, source });
     };
 
-    const timer = window.setTimeout(() => show('time_42s'), 42000);
+    const timer = window.setTimeout(() => show('time_23s'), 23000);
     const onScroll = () => {
       const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
       if (window.scrollY / max >= 0.65) show('scroll_65');
