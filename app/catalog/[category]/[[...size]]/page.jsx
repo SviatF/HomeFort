@@ -2,11 +2,15 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import Catalog from '@/screens/Catalog';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
 import { getHomefortLiveProducts } from '@/lib/homefort-feed-live';
+import { compactCatalogProducts } from '@/lib/catalog-compact';
 import { buildMetadata, breadcrumbSchema, collectionSchema, faqSchema } from '@/lib/seo';
 import { BED_SEMANTIC_LANDINGS, getBedSemanticLanding, filterProductsForBedLanding } from '@/lib/bed-semantic-core';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = 'force-static';
+export const revalidate = 3600;
+
+const INITIAL_CATALOG_SIZE = 12;
+const STRUCTURED_DATA_LIMIT = 24;
 
 const fallbackTitles = {
   beds: ['Ліжка', 'М’які ліжка Homefort у каталозі DOMERA. Різні розміри, тканини та комплектації. Доставка по Україні.'],
@@ -177,13 +181,24 @@ export default async function Page({ params }) {
   ];
 
   const schemas = [
-    collectionSchema({ name: route.size ? `${name} ${label}` : name, description, url, products: filteredProducts }),
+    collectionSchema({ name: route.size ? `${name} ${label}` : name, description, url, products: filteredProducts.slice(0, STRUCTURED_DATA_LIMIT) }),
     breadcrumbSchema(breadcrumbItems),
     ...(route.landing?.faq?.length ? [faqSchema(route.landing.faq)] : []),
   ].filter(Boolean);
 
+  const initialScopeProducts = filteredProducts;
+  const initialProducts = compactCatalogProducts(initialScopeProducts.slice(0, INITIAL_CATALOG_SIZE));
+  const landingParam = route.landing?.slug ? `&landing=${encodeURIComponent(route.landing.slug)}` : '';
+  const initialLoadUrl = `/api/catalog/products?category=${encodeURIComponent(category)}${landingParam}`;
+
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
-    <Catalog initialProducts={data.products} initialCategory={data.categoryEntity} />
+    <Catalog
+      initialProducts={initialProducts}
+      initialCategory={data.categoryEntity}
+      initialTotal={initialScopeProducts.length}
+      initialComplete={initialScopeProducts.length <= INITIAL_CATALOG_SIZE}
+      initialLoadUrl={initialLoadUrl}
+    />
   </>;
 }
