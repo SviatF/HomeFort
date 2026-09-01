@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { X, Loader2, Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { track } from '@/lib/analytics';
+import { track, trackGenerateLead, trackMeta } from '@/lib/analytics';
 import { getUtm } from '@/lib/utm';
 
 const TRACK_EVENT = {
@@ -12,7 +12,7 @@ const TRACK_EVENT = {
 };
 
 const COPY = {
-  one_click: { title: 'Купити в 1 клік', subtitle: 'Залиште контакти — менеджер оформить замовлення за вашим вибором.' },
+  one_click: { title: 'Купити в 1 клік', subtitle: 'Вкажіть телефон — менеджер отримає обрану модель і комплектацію та підтвердить замовлення.' },
   fabric_sample: { title: 'Замовити зразки тканини', subtitle: 'Надішлемо зразки обраних тканин Новою Поштою.' },
   consultation: { title: 'Замовити дзвінок', subtitle: 'Залиште телефон і зручний час. Менеджер допоможе з розміром, тканиною та комплектацією.' },
 };
@@ -38,7 +38,7 @@ export default function LeadModal({ open, onClose, leadType, product, context = 
       setError('Вкажіть номер телефону.');
       return;
     }
-    if (leadType !== 'consultation' && !form.name.trim()) {
+    if (leadType === 'fabric_sample' && !form.name.trim()) {
       setError("Заповніть ім'я.");
       return;
     }
@@ -46,6 +46,7 @@ export default function LeadModal({ open, onClose, leadType, product, context = 
       setError('Потрібна згода на обробку даних.');
       return;
     }
+
     setSubmitting(true);
     const consultationMessage = [
       form.preferredTime ? `Бажаний час дзвінка: ${form.preferredTime}` : '',
@@ -53,7 +54,7 @@ export default function LeadModal({ open, onClose, leadType, product, context = 
     ].filter(Boolean).join('\n');
     const payload = {
       leadType,
-      name: form.name.trim() || 'Консультація з товару',
+      name: form.name.trim() || (leadType === 'one_click' ? 'Швидке замовлення' : 'Консультація з товару'),
       phone: form.phone.trim(),
       email: '',
       message: consultationMessage,
@@ -64,9 +65,29 @@ export default function LeadModal({ open, onClose, leadType, product, context = 
       fabricSamples: leadType === 'fabric_sample' ? form.fabrics : [],
       ...getUtm(),
     };
+
     try {
       await base44.functions.invoke('createLead', payload);
-      track(TRACK_EVENT[leadType] || 'lead_submit', { lead_type: leadType, product_id: product?.id || '', preferred_time: form.preferredTime || undefined });
+      track(TRACK_EVENT[leadType] || 'lead_submit', {
+        lead_type: leadType,
+        product_id: product?.id || '',
+        variant_sku: context.variantSKU || undefined,
+        preferred_time: form.preferredTime || undefined,
+      });
+      trackGenerateLead({
+        source: leadType === 'one_click' ? 'one_click_buy' : leadType,
+        product,
+        value: context.price,
+        variantSKU: context.variantSKU,
+        configuration: context.configuration,
+      });
+      trackMeta('Lead', {
+        content_name: product?.name || (leadType === 'one_click' ? 'Швидке замовлення' : 'DOMERA lead'),
+        content_ids: context.variantSKU ? [context.variantSKU] : product?.id ? [product.id] : undefined,
+        content_type: 'product',
+        currency: 'UAH',
+        value: Number(context.price || product?.price_current || product?.price || 0),
+      });
       setDone(true);
     } catch (err) {
       setError('Не вдалося надіслати. Спробуйте ще раз або зателефонуйте нам.');
@@ -104,15 +125,15 @@ export default function LeadModal({ open, onClose, leadType, product, context = 
                 {product.images?.[0] && <img src={product.images[0]} alt="" className="w-12 h-14 object-cover flex-shrink-0" />}
                 <div className="min-w-0">
                   <p className="font-heading text-base text-[#342112] leading-tight truncate">{product.name}</p>
-                  {context.configuration && <p className="text-xs text-[#755A44] truncate">{context.configuration}</p>}
+                  {context.configuration && <p className="text-xs text-[#755A44] line-clamp-2">{context.configuration}</p>}
                   {context.price != null && <p className="text-sm text-[#342112] mt-0.5">{Number(context.price).toLocaleString('uk-UA')} ₴</p>}
                 </div>
               </div>
             )}
 
             <form onSubmit={submit} className="space-y-4">
-              {leadType !== 'consultation' && <Field label="Ім'я"><input value={form.name} onChange={(e) => set('name', e.target.value)} className="lead-input" autoComplete="name" /></Field>}
-              <Field label="Телефон"><input value={form.phone} onChange={(e) => set('phone', e.target.value)} type="tel" inputMode="tel" autoComplete="tel" className="lead-input" placeholder="+380" /></Field>
+              {leadType === 'fabric_sample' && <Field label="Ім'я"><input value={form.name} onChange={(e) => set('name', e.target.value)} className="lead-input" autoComplete="name" /></Field>}
+              <Field label="Телефон"><input value={form.phone} onChange={(e) => set('phone', e.target.value)} type="tel" inputMode="tel" autoComplete="tel" className="lead-input" placeholder="+380" autoFocus={leadType === 'one_click'} /></Field>
 
               {leadType === 'consultation' && <>
                 <Field label="Бажаний час дзвінка">
@@ -135,8 +156,9 @@ export default function LeadModal({ open, onClose, leadType, product, context = 
 
               {error && <p className="text-sm text-[#8B3A2E]">{error}</p>}
               <button type="submit" disabled={submitting} className="group w-full py-4 bg-[#C8643B] text-white text-[12px] tracking-[0.18em] uppercase flex items-center justify-center gap-2 disabled:opacity-60 ui-radius-sm">
-                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.4} /> Обробка…</> : leadType === 'consultation' ? 'Замовити дзвінок' : 'Надіслати заявку'}
+                {submitting ? <><Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.4} /> Обробка…</> : leadType === 'consultation' ? 'Замовити дзвінок' : leadType === 'one_click' ? 'Оформити в 1 клік' : 'Надіслати заявку'}
               </button>
+              {leadType === 'one_click' && <p className="text-[11px] leading-relaxed text-[#937C68] text-center">Без реєстрації та довгого оформлення. Деталі доставки підтвердить менеджер.</p>}
             </form>
           </>
         )}
