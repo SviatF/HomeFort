@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from '@/lib/router';
 import { ArrowRight, Check, Phone, ShieldCheck, Truck } from 'lucide-react';
 import Header from '@/components/domera/Header';
@@ -70,44 +70,6 @@ function findSelectedVariant(product, selections) {
   return bestVariant(matches) || bestVariant(variants);
 }
 
-function useAnimatedNumber(value, duration = 360) {
-  const target = Number(value || 0);
-  const [displayValue, setDisplayValue] = useState(target);
-  const displayRef = useRef(target);
-
-  useEffect(() => {
-    const next = Number(value || 0);
-    const from = Number(displayRef.current || 0);
-    if (from === next) {
-      setDisplayValue(next);
-      return undefined;
-    }
-    if (typeof window === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      displayRef.current = next;
-      setDisplayValue(next);
-      return undefined;
-    }
-    let frameId;
-    const startedAt = performance.now();
-    const tick = (now) => {
-      const progress = Math.min((now - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(from + (next - from) * eased);
-      displayRef.current = current;
-      setDisplayValue(current);
-      if (progress < 1) frameId = requestAnimationFrame(tick);
-      else {
-        displayRef.current = next;
-        setDisplayValue(next);
-      }
-    };
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [value, duration]);
-
-  return displayValue;
-}
-
 export default function VariantProduct({ initialProduct, initialRelated = [] }) {
   const product = initialProduct;
   const meta = CATEGORY_META[product?.category] || { name: 'Каталог', url: `/catalog/${product?.category || ''}`, sizeLabel: 'Розмір' };
@@ -120,8 +82,6 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
 
   const price = Number(selectedVariant?.price || product?.price_current || product?.price || 0);
   const previousPrice = Number(selectedVariant?.oldPrice || product?.price_old || product?.oldPrice || 0);
-  const animatedPrice = useAnimatedNumber(price);
-  const animatedPreviousPrice = useAnimatedNumber(previousPrice);
   const discounted = previousPrice > price && price > 0;
   const salePercent = discounted ? Math.round((1 - price / previousPrice) * 100) : 0;
   const inStock = selectedVariant?.availability ? selectedVariant.availability === 'in_stock' : product?.availability === 'in_stock';
@@ -139,6 +99,11 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
     privatbank_enabled: true,
     pumb_enabled: true,
   }), [product]);
+
+  const configuration = useMemo(() => DIMENSIONS
+    .map(({ key, label }) => selections[key] ? `${label}: ${selections[key]}` : '')
+    .filter(Boolean)
+    .join(' · '), [selections]);
 
   useEffect(() => {
     setSelections(selectionFromVariant(defaultVariant));
@@ -177,6 +142,21 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
     });
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
   }, [selections, product?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !product || !selectedVariant) return;
+    window.dispatchEvent(new CustomEvent('domera:variant-change', {
+      detail: {
+        productId: product.id,
+        variant: selectedVariant,
+        variantSKU: selectedVariant.sku || selectedVariant.id || product.sku || product.id,
+        size: selections.size || '',
+        price,
+        oldPrice: previousPrice,
+        configuration,
+      },
+    }));
+  }, [product?.id, selectedVariant?.id, selections.size, price, previousPrice, configuration]);
 
   useEffect(() => {
     if (!product || !selectedVariant) return;
@@ -222,11 +202,6 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
     open?.();
   };
 
-  const configuration = DIMENSIONS
-    .map(({ key, label }) => selections[key] ? `${label}: ${selections[key]}` : '')
-    .filter(Boolean)
-    .join(' · ');
-
   return (
     <div className="bg-milk min-h-screen pb-[82px]">
       <Header />
@@ -257,14 +232,14 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
 
               <div className="mt-6">
                 <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className={`font-heading text-[42px] font-semibold leading-none tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{animatedPrice.toLocaleString('uk-UA')} ₴</span>
-                  {discounted && <span className="text-lg text-mocha line-through tabular-nums">{animatedPreviousPrice.toLocaleString('uk-UA')} ₴</span>}
+                  <span className={`font-heading text-[42px] font-semibold leading-none tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
+                  {discounted && <span className="text-lg text-mocha line-through tabular-nums">{previousPrice.toLocaleString('uk-UA')} ₴</span>}
                   {discounted && <span className="bg-[#C8643B]/10 px-2 py-1 text-[11px] font-semibold text-[#A34E2F]">−{salePercent}%</span>}
                 </div>
-                <p className="mt-2 text-[12px] leading-relaxed text-mocha">Ціна автоматично змінюється відповідно до вибраного розміру або варіанта.</p>
+                <p className="mt-2 text-[12px] leading-relaxed text-mocha">Ціна одразу відповідає вибраному розміру та варіанту.</p>
               </div>
 
-              <BankInstallmentBlock product={installmentProduct} price={animatedPrice} />
+              <BankInstallmentBlock product={installmentProduct} price={price} />
 
               <div className="mt-8 space-y-7">
                 {dimensionOptions.map((dimension, dimensionIndex) => {
@@ -272,9 +247,7 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
                   const currentValue = selections[dimension.key];
                   return (
                     <div key={dimension.key}>
-                      <p className="mb-3 text-[11px] tracking-[0.22em] uppercase text-mocha">
-                        <span className="mr-2 text-[#C08462]">{String(dimensionIndex + 1).padStart(2, '0')}</span>{dimension.label}
-                      </p>
+                      <p className="mb-3 text-[11px] tracking-[0.22em] uppercase text-mocha"><span className="mr-2 text-[#C08462]">{String(dimensionIndex + 1).padStart(2, '0')}</span>{dimension.label}</p>
                       <div className={dimension.key === 'size' ? 'grid grid-cols-3 sm:grid-cols-4 gap-2' : 'flex flex-wrap gap-2'}>
                         {dimension.values.map((value) => {
                           const active = dimension.key === 'size' ? Boolean(currentValue && sizeMatches(value, currentValue)) : currentValue === value;
@@ -287,11 +260,7 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
               </div>
 
               <div className="mt-7"><ConsultationMagnet onOpen={() => setConsultationOpen(true)} emphasis compact /></div>
-              <div className="mt-4 flex items-center gap-2">
-                <span className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${inStock ? 'border-espresso/12 bg-[#F8F2E9] text-espresso' : 'border-clay/25 text-clay'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${inStock ? 'bg-espresso' : 'bg-clay'}`} />{inStock ? 'В наявності' : 'Немає в наявності'}
-                </span>
-              </div>
+              <div className="mt-4 flex items-center gap-2"><span className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${inStock ? 'border-espresso/12 bg-[#F8F2E9] text-espresso' : 'border-clay/25 text-clay'}`}><span className={`w-1.5 h-1.5 rounded-full ${inStock ? 'bg-espresso' : 'bg-clay'}`} />{inStock ? 'В наявності' : 'Немає в наявності'}</span></div>
 
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-px border-y border-espresso/10 bg-espresso/10">
                 <div className="bg-milk px-4 py-4"><Check className="w-4 h-4 text-espresso"/><p className="mt-3 text-[10px] tracking-[0.2em] uppercase text-mocha">Вибір</p><p className="mt-1 text-[12px] leading-relaxed text-espresso">Варіанти з актуального каталогу</p></div>
@@ -311,7 +280,7 @@ export default function VariantProduct({ initialProduct, initialRelated = [] }) 
 
       <div className="fixed inset-x-0 bottom-0 z-[65] border-t border-espresso/10 bg-milk/95 shadow-[0_-10px_35px_rgba(52,33,18,0.08)] backdrop-blur-xl">
         <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-12">
-          <div className="hidden min-w-0 md:block"><p className="truncate text-[11px] text-mocha">{selections.size ? `${selections.size} · ` : ''}{product.name}</p><div className="mt-0.5 flex items-baseline gap-2"><span className={`font-heading text-[24px] font-semibold tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{animatedPrice.toLocaleString('uk-UA')} ₴</span>{discounted && <span className="text-[12px] text-mocha line-through tabular-nums">{animatedPreviousPrice.toLocaleString('uk-UA')} ₴</span>}</div></div>
+          <div className="hidden min-w-0 md:block"><p className="truncate text-[11px] text-mocha">{selections.size ? `${selections.size} · ` : ''}{product.name}</p><div className="mt-0.5 flex items-baseline gap-2"><span className={`font-heading text-[24px] font-semibold tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>{discounted && <span className="text-[12px] text-mocha line-through tabular-nums">{previousPrice.toLocaleString('uk-UA')} ₴</span>}</div></div>
           <div className="ml-auto grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:min-w-[360px]">
             <button type="button" onClick={() => setConsultationOpen(true)} className="ui-radius-sm min-h-11 border border-[#C8643B] px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#C8643B] inline-flex items-center justify-center gap-2"><Phone className="w-4 h-4" /> Дзвінок</button>
             <button type="button" onClick={addToCart} disabled={!price || !inStock} className="ui-radius-sm min-h-11 bg-espresso px-7 text-[11px] font-semibold uppercase tracking-[0.14em] text-milk inline-flex items-center justify-center gap-3 disabled:cursor-not-allowed disabled:opacity-45">Купити <ArrowRight className="w-4 h-4" /></button>
