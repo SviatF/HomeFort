@@ -7,10 +7,11 @@ import ConversionSuitePortal from '@/components/domera/ConversionSuitePortal';
 import PdpConversionRailPortal from '@/components/domera/PdpConversionRailPortal';
 import { getHomefortBundleOffersForProduct, getHomefortLiveProductBySlug, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
+import { compactCatalogProduct } from '@/lib/catalog-compact';
 import { buildMetadata, breadcrumbSchema, productSchema } from '@/lib/seo';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const dynamic = 'force-static';
+export const revalidate = 3600;
 
 const CRO_CATEGORY_MATRIX = {
   beds: ['mattresses', 'toppers', 'pillows', 'duvets'],
@@ -112,7 +113,8 @@ const getProductData = cache(async (slug) => {
     related: relatedAll
       .filter((item) => item.indexable !== false && item.slug !== product.slug)
       .sort((a, b) => Math.abs(Number(a.price || 0) - Number(product.price || 0)) - Math.abs(Number(b.price || 0) - Number(product.price || 0)))
-      .slice(0, 3),
+      .slice(0, 3)
+      .map(compactCatalogProduct),
   };
 });
 
