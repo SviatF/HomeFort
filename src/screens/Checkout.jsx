@@ -146,7 +146,7 @@ export default function Checkout() {
       email: '',
       city,
       deliveryMethod: 'Уточнити з менеджером',
-      address: '',
+      address: 'Уточнити з менеджером',
       paymentMethod: payment,
       comment: fd.get('comment'),
       deliveryCost: delivery,
