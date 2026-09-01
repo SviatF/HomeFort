@@ -19,8 +19,8 @@ function selectedVariantFromSearch(product = {}, search = '') {
   const wanted = {
     size: params.get('size') || '',
     priceCategory: params.get('category') || '',
-    liftingMechanism: params.get('lift') || '',
-    frameOption: params.get('frame') || '',
+    liftingMechanism: params.get('lift') || params.get('variant') || '',
+    frameOption: params.get('frame') || params.get('option') || '',
   };
 
   const matches = variants.filter((variant) => {
@@ -87,9 +87,9 @@ function BundleRow({ label, item }) {
 }
 
 export default function PdpConversionRailPortal({ product, recommendations = {} }) {
-  const { add, open } = useCart();
+  const { add, open, markPurchaseIntent } = useCart();
   const [host, setHost] = useState(null);
-  const [search, setSearch] = useState(() => (typeof window !== 'undefined' ? window.location.search : ''));
+  const [selectedVariant, setSelectedVariant] = useState(() => selectedVariantFromSearch(product, typeof window !== 'undefined' ? window.location.search : ''));
   const [oneClickOpen, setOneClickOpen] = useState(false);
   const [consultOpen, setConsultOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -113,15 +113,24 @@ export default function PdpConversionRailPortal({ product, recommendations = {} 
   }, [product?.id]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      const next = window.location.search;
-      setSearch((current) => current === next ? current : next);
-    }, 300);
-    return () => window.clearInterval(timer);
-  }, []);
+    setSelectedVariant(selectedVariantFromSearch(product, window.location.search));
 
-  const selectedVariant = useMemo(() => selectedVariantFromSearch(product, search), [product, search]);
-  const selectedSize = selectedVariant?.size || new URLSearchParams(search || '').get('size') || '';
+    const onVariantChange = (event) => {
+      const detail = event?.detail || {};
+      if (String(detail.productId || '') !== String(product?.id || '')) return;
+      if (detail.variant) setSelectedVariant(detail.variant);
+    };
+    const onPopState = () => setSelectedVariant(selectedVariantFromSearch(product, window.location.search));
+
+    window.addEventListener('domera:variant-change', onVariantChange);
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('domera:variant-change', onVariantChange);
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [product?.id]);
+
+  const selectedSize = selectedVariant?.size || '';
   const currentPrice = Number(selectedVariant?.price || product?.price_current || product?.price || 0);
   const currentOldPrice = Number(selectedVariant?.oldPrice || product?.price_old || product?.oldPrice || 0);
   const currentSku = selectedVariant?.sku || selectedVariant?.id || product?.sku || product?.id;
@@ -195,13 +204,7 @@ export default function PdpConversionRailPortal({ product, recommendations = {} 
       });
     });
 
-    trackPromotion({
-      id: 'pdp_smart_bundle',
-      name: 'Комплект під ваше ліжко',
-      locationId: 'pdp_buybox',
-      items: analyticsItems,
-      value: bundleTotal,
-    });
+    trackPromotion({ id: 'pdp_smart_bundle', name: 'Комплект під ваше ліжко', locationId: 'pdp_buybox', items: analyticsItems, value: bundleTotal });
     track('add_to_cart', { value: bundleTotal, items: analyticsItems });
     trackMeta('AddToCart', {
       currency: 'UAH',
@@ -222,21 +225,10 @@ export default function PdpConversionRailPortal({ product, recommendations = {} 
         ? `Для замовлень від 30 000 ₴ на сайті діє безкоштовна доставка. Спосіб доставки до ${normalizedCity} підтвердить менеджер.`
         : `До ${normalizedCity} доставляємо Новою Поштою або погодженою логістикою. Точну вартість і термін менеджер підтвердить перед оформленням.`,
     );
-    track('delivery_calculator', {
-      city: normalizedCity,
-      item_id: currentSku,
-      item_category: product?.category,
-      value: currentPrice,
-      free_delivery_threshold_reached: freeDelivery,
-    });
+    track('delivery_calculator', { city: normalizedCity, item_id: currentSku, item_category: product?.category, value: currentPrice, free_delivery_threshold_reached: freeDelivery });
   };
 
-  const leadContext = {
-    variantSKU: currentSku,
-    configuration,
-    price: currentPrice,
-  };
-
+  const leadContext = { variantSKU: currentSku, configuration, price: currentPrice };
   const consultationContext = {
     ...leadContext,
     configuration: [configuration, city.trim() ? `Доставка: ${city.trim()}` : ''].filter(Boolean).join(' · '),
@@ -248,68 +240,24 @@ export default function PdpConversionRailPortal({ product, recommendations = {} 
     <>
       <div className="rounded-[20px] border border-espresso/10 bg-white/65 p-4 shadow-[0_8px_28px_rgba(52,33,18,0.045)] md:p-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#B56B43]">Швидке оформлення</p>
-            <p className="mt-1.5 text-[13px] font-semibold text-espresso">Без довгих форм і реєстрації</p>
-          </div>
+          <div><p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#B56B43]">Швидке оформлення</p><p className="mt-1.5 text-[13px] font-semibold text-espresso">Без довгих форм і реєстрації</p></div>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F5E4D1]/70 text-[#A95432]"><Phone className="h-4 w-4" /></div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <button type="button" onClick={() => { setOneClickOpen(true); track('one_click_open', { item_id: currentSku, value: currentPrice }); }} className="ui-radius-sm flex min-h-12 items-center justify-center gap-2 bg-[#C8643B] px-4 text-[10px] font-semibold uppercase tracking-[0.13em] text-white transition-colors hover:bg-[#B65734]">
-            Купити в 1 клік <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={() => setDeliveryOpen((current) => !current)} className="ui-radius-sm flex min-h-12 items-center justify-center gap-2 border border-espresso/15 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-espresso transition-colors hover:border-espresso/35">
-            <MapPin className="h-3.5 w-3.5" /> Розрахувати доставку
-          </button>
+          <button type="button" onClick={() => { markPurchaseIntent?.(); setOneClickOpen(true); track('one_click_open', { item_id: currentSku, value: currentPrice }); }} className="ui-radius-sm flex min-h-12 items-center justify-center gap-2 bg-[#C8643B] px-4 text-[10px] font-semibold uppercase tracking-[0.13em] text-white transition-colors hover:bg-[#B65734]">Купити в 1 клік <ArrowRight className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => setDeliveryOpen((current) => !current)} className="ui-radius-sm flex min-h-12 items-center justify-center gap-2 border border-espresso/15 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-espresso transition-colors hover:border-espresso/35"><MapPin className="h-3.5 w-3.5" /> Розрахувати доставку</button>
         </div>
 
-        {deliveryOpen && (
-          <form onSubmit={calculateDelivery} className="mt-4 rounded-[14px] border border-espresso/8 bg-[#F8F3EC] p-3.5">
-            <label className="text-[9px] font-semibold uppercase tracking-[0.16em] text-mocha">Ваше місто</label>
-            <div className="mt-2 flex gap-2">
-              <input value={city} onChange={(e) => { setCity(e.target.value); setDeliveryResult(''); }} placeholder="Наприклад, Львів" autoComplete="address-level2" className="min-w-0 flex-1 rounded-[10px] border border-espresso/12 bg-white px-3 py-2.5 text-[12px] text-espresso outline-none focus:border-espresso/35" />
-              <button type="submit" disabled={!city.trim()} className="rounded-[10px] bg-espresso px-4 text-[10px] font-semibold uppercase tracking-[0.1em] text-milk disabled:opacity-35">Порахувати</button>
-            </div>
-            {deliveryResult && (
-              <div className="mt-3 border-t border-espresso/8 pt-3">
-                <p className="flex items-start gap-2 text-[11px] leading-relaxed text-mocha"><Truck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A95432]" />{deliveryResult}</p>
-                <button type="button" onClick={() => setConsultOpen(true)} className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#A95432] underline underline-offset-4">Уточнити у менеджера</button>
-              </div>
-            )}
-          </form>
-        )}
+        {deliveryOpen && <form onSubmit={calculateDelivery} className="mt-4 rounded-[14px] border border-espresso/8 bg-[#F8F3EC] p-3.5"><label className="text-[9px] font-semibold uppercase tracking-[0.16em] text-mocha">Ваше місто</label><div className="mt-2 flex gap-2"><input value={city} onChange={(e) => { setCity(e.target.value); setDeliveryResult(''); }} placeholder="Наприклад, Львів" autoComplete="address-level2" className="min-w-0 flex-1 rounded-[10px] border border-espresso/12 bg-white px-3 py-2.5 text-[12px] text-espresso outline-none focus:border-espresso/35" /><button type="submit" disabled={!city.trim()} className="rounded-[10px] bg-espresso px-4 text-[10px] font-semibold uppercase tracking-[0.1em] text-milk disabled:opacity-35">Порахувати</button></div>{deliveryResult && <div className="mt-3 border-t border-espresso/8 pt-3"><p className="flex items-start gap-2 text-[11px] leading-relaxed text-mocha"><Truck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A95432]" />{deliveryResult}</p><button type="button" onClick={() => setConsultOpen(true)} className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#A95432] underline underline-offset-4">Уточнити у менеджера</button></div>}</form>}
       </div>
 
       {product?.category === 'beds' && bundleAccessories.length > 0 && (
         <div className="mt-3 rounded-[20px] border border-[#d9c7b8] bg-[#F8F3EC] p-4 md:p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#B56B43]">Smart bundle</p>
-              <h3 className="mt-1 font-heading text-[22px] leading-tight text-espresso">Комплект під ваше ліжко</h3>
-              <p className="mt-1 text-[11px] leading-relaxed text-mocha">Підібрано під {selectedSize || 'обрану комплектацію'}.</p>
-            </div>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#A95432]"><PackageCheck className="h-4 w-4" /></div>
-          </div>
-
-          <div className="mt-3 divide-y divide-espresso/8">
-            <BundleRow label="Ліжко" item={sourceItem} />
-            <BundleRow label="Матрац" item={mattress} />
-            <BundleRow label="Наматрацник" item={topper} />
-          </div>
-
-          <div className="mt-3 flex items-end justify-between gap-4 border-t border-espresso/10 pt-3">
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.14em] text-mocha">Комплект разом</p>
-              <p className="mt-1 font-heading text-[25px] font-semibold text-espresso">{money(bundleTotal)} ₴</p>
-              {bundleSavings > 0 && <p className="mt-0.5 text-[10px] font-semibold text-[#456b49]">Економія за поточними акціями {money(bundleSavings)} ₴</p>}
-            </div>
-            <span className="hidden items-center gap-1.5 text-[10px] text-mocha sm:flex"><Check className="h-3.5 w-3.5 text-[#456b49]" /> сумісний розмір</span>
-          </div>
-
-          <button type="button" onClick={addBundle} className="ui-radius-sm mt-4 flex min-h-12 w-full items-center justify-center gap-2 bg-espresso px-5 text-[10px] font-semibold uppercase tracking-[0.13em] text-milk transition-colors hover:bg-espresso-soft">
-            Додати комплект у кошик <ArrowRight className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#B56B43]">Smart bundle</p><h3 className="mt-1 font-heading text-[22px] leading-tight text-espresso">Комплект під ваше ліжко</h3><p className="mt-1 text-[11px] leading-relaxed text-mocha">Підібрано під {selectedSize || 'обрану комплектацію'}.</p></div><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#A95432]"><PackageCheck className="h-4 w-4" /></div></div>
+          <div className="mt-3 divide-y divide-espresso/8"><BundleRow label="Ліжко" item={sourceItem} /><BundleRow label="Матрац" item={mattress} /><BundleRow label="Наматрацник" item={topper} /></div>
+          <div className="mt-3 flex items-end justify-between gap-4 border-t border-espresso/10 pt-3"><div><p className="text-[9px] uppercase tracking-[0.14em] text-mocha">Комплект разом</p><p className="mt-1 font-heading text-[25px] font-semibold text-espresso">{money(bundleTotal)} ₴</p>{bundleSavings > 0 && <p className="mt-0.5 text-[10px] font-semibold text-[#456b49]">Економія за поточними акціями {money(bundleSavings)} ₴</p>}</div><span className="hidden items-center gap-1.5 text-[10px] text-mocha sm:flex"><Check className="h-3.5 w-3.5 text-[#456b49]" /> сумісний розмір</span></div>
+          <button type="button" onClick={addBundle} className="ui-radius-sm mt-4 flex min-h-12 w-full items-center justify-center gap-2 bg-espresso px-5 text-[10px] font-semibold uppercase tracking-[0.13em] text-milk transition-colors hover:bg-espresso-soft">Додати комплект у кошик <ArrowRight className="h-3.5 w-3.5" /></button>
         </div>
       )}
 
