@@ -4,7 +4,7 @@ import Reveal from './Reveal';
 
 export default function TradeIn() {
   return (
-    <section className="bg-espresso py-24 md:py-32 border-y border-milk/10">
+    <section id="trade-in" className="bg-espresso py-24 md:py-32 border-y border-milk/10 scroll-mt-24">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <Reveal className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7">
