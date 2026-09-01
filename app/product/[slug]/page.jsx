@@ -4,6 +4,7 @@ import BedProduct from '@/screens/BedProduct';
 import VariantProduct from '@/screens/VariantProduct';
 import BundleOfferPortal from '@/components/domera/BundleOfferPortal';
 import ConversionSuitePortal from '@/components/domera/ConversionSuitePortal';
+import PdpConversionRailPortal from '@/components/domera/PdpConversionRailPortal';
 import { getHomefortBundleOffersForProduct, getHomefortLiveProductBySlug, getHomefortLiveProducts } from '@/lib/homefort-feed-live';
 import { getHomefortFeedCategory } from '@/lib/homefort-feed-static';
 import { buildMetadata, breadcrumbSchema, productSchema } from '@/lib/seo';
@@ -163,6 +164,7 @@ export default async function Page({ params }) {
     {product.category === 'beds'
       ? <BedProduct initialProduct={product} initialRelated={data.related} />
       : <VariantProduct initialProduct={product} initialRelated={data.related} />}
+    <PdpConversionRailPortal product={product} recommendations={data.recommendations} />
     <ConversionSuitePortal product={product} recommendations={data.recommendations} />
     {product.category === 'beds' && <BundleOfferPortal offers={data.offers} />}
   </>;
