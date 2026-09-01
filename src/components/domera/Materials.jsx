@@ -15,7 +15,7 @@ export default function Materials() {
   const m = materials[active];
 
   return (
-    <section className="bg-espresso-soft py-24 md:py-36">
+    <section id="materials" className="bg-espresso-soft py-24 md:py-36 scroll-mt-24">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <Reveal className="max-w-2xl mb-14 md:mb-20">
           <p className="text-[11px] tracking-[0.32em] uppercase text-champagne mb-4">Матеріали</p>
