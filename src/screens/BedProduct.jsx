@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from '@/lib/router';
 import { Check, Truck, ShieldCheck, ArrowRight, Phone } from 'lucide-react';
 import Header from '@/components/domera/Header';
@@ -66,52 +66,6 @@ function findSelectedVariant(product, selections) {
   return bestVariant(matches) || bestVariant(variants);
 }
 
-function useAnimatedNumber(value, duration = 360) {
-  const target = Number(value || 0);
-  const [displayValue, setDisplayValue] = useState(target);
-  const displayRef = useRef(target);
-
-  useEffect(() => {
-    const next = Number(value || 0);
-    const from = Number(displayRef.current || 0);
-
-    if (from === next) {
-      setDisplayValue(next);
-      return undefined;
-    }
-
-    if (typeof window === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      displayRef.current = next;
-      setDisplayValue(next);
-      return undefined;
-    }
-
-    let frameId;
-    const startedAt = performance.now();
-
-    const tick = (now) => {
-      const progress = Math.min((now - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.round(from + (next - from) * eased);
-
-      displayRef.current = current;
-      setDisplayValue(current);
-
-      if (progress < 1) {
-        frameId = requestAnimationFrame(tick);
-      } else {
-        displayRef.current = next;
-        setDisplayValue(next);
-      }
-    };
-
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [value, duration]);
-
-  return displayValue;
-}
-
 export default function BedProduct({ initialProduct, initialRelated = [] }) {
   const product = initialProduct;
   const { add, open } = useCart();
@@ -123,8 +77,6 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
 
   const price = Number(selectedVariant?.price || product?.price_current || product?.price || 0);
   const previousPrice = Number(selectedVariant?.oldPrice || product?.price_old || product?.oldPrice || 0);
-  const animatedPrice = useAnimatedNumber(price);
-  const animatedPreviousPrice = useAnimatedNumber(previousPrice);
   const discounted = previousPrice > price && price > 0;
   const salePercent = discounted ? Math.round((1 - price / previousPrice) * 100) : 0;
   const inStock = selectedVariant?.availability
@@ -194,6 +146,21 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
     });
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
   }, [selections, product?.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !product || !selectedVariant) return;
+    window.dispatchEvent(new CustomEvent('domera:variant-change', {
+      detail: {
+        productId: product.id,
+        variant: selectedVariant,
+        variantSKU: selectedVariant.sku || selectedVariant.id || product.sku || product.id,
+        size,
+        price,
+        oldPrice: previousPrice,
+        configuration,
+      },
+    }));
+  }, [product?.id, selectedVariant?.id, size, price, previousPrice, configuration]);
 
   useEffect(() => {
     if (!product || !selectedVariant) return;
@@ -309,14 +276,14 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
 
               <div className="mt-6">
                 <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className={`font-heading text-[42px] font-semibold leading-none tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{animatedPrice.toLocaleString('uk-UA')} ₴</span>
-                  {discounted && <span className="text-lg text-mocha line-through tabular-nums">{animatedPreviousPrice.toLocaleString('uk-UA')} ₴</span>}
+                  <span className={`font-heading text-[42px] font-semibold leading-none tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
+                  {discounted && <span className="text-lg text-mocha line-through tabular-nums">{previousPrice.toLocaleString('uk-UA')} ₴</span>}
                   {discounted && <span className="bg-[#C8643B]/10 px-2 py-1 text-[11px] font-semibold text-[#A34E2F]">−{salePercent}%</span>}
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-mocha">Остаточну суму та доступні способи оплати підтвердимо при оформленні.</p>
               </div>
 
-              <BankInstallmentBlock product={installmentProduct} price={animatedPrice} />
+              <BankInstallmentBlock product={installmentProduct} price={price} />
 
               <div className="mt-8 space-y-7">
                 {dimensionOptions.map((dimension, dimensionIndex) => {
@@ -365,9 +332,7 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
                 <p className="mt-1.5 text-[12px] leading-relaxed text-mocha">Фото й характеристики доступних колекцій тканини підтвердить менеджер для конкретної моделі. Ми не показуємо вигадані кольори або матеріали.</p>
               </div>
 
-              <div className="mt-4">
-                <ConsultationMagnet onOpen={() => setConsultationOpen(true)} emphasis compact />
-              </div>
+              <div className="mt-4"><ConsultationMagnet onOpen={() => setConsultationOpen(true)} emphasis compact /></div>
 
               <div className="mt-4 flex items-center gap-2">
                 <span className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${inStock ? 'border-espresso/12 bg-[#F8F2E9] text-espresso' : 'border-clay/25 text-clay'}`}>
@@ -386,26 +351,15 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
 
           {(product.fullDescription || product.shortDescription) && (
             <section className="mt-20 md:mt-28 border-t border-espresso/10 pt-12 md:pt-16 grid lg:grid-cols-[0.65fr_1.35fr] gap-8 lg:gap-16">
-              <div>
-                <p className="text-[10px] tracking-[0.26em] uppercase text-mocha mb-3">Про модель</p>
-                <h2 className="font-heading text-3xl md:text-4xl text-espresso">Характер і комфорт</h2>
-              </div>
+              <div><p className="text-[10px] tracking-[0.26em] uppercase text-mocha mb-3">Про модель</p><h2 className="font-heading text-3xl md:text-4xl text-espresso">Характер і комфорт</h2></div>
               <div className="text-mocha leading-relaxed whitespace-pre-line max-w-3xl">{product.fullDescription || product.shortDescription}</div>
             </section>
           )}
 
           {initialRelated.length > 0 && (
             <section className="mt-20 md:mt-28 border-t border-espresso/10 pt-12 md:pt-16">
-              <div className="flex items-end justify-between gap-5 mb-10">
-                <div>
-                  <p className="text-[10px] tracking-[0.26em] uppercase text-mocha mb-3">Ще моделі</p>
-                  <h2 className="font-heading text-3xl md:text-4xl text-espresso">Схожі ліжка</h2>
-                </div>
-                <Link to="/catalog/beds" className="text-xs uppercase tracking-[0.14em] text-espresso border-b border-espresso/30 pb-1">Усі ліжка</Link>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
-                {initialRelated.map((item) => <ProductCard key={item.id || item.slug} product={item} />)}
-              </div>
+              <div className="flex items-end justify-between gap-5 mb-10"><div><p className="text-[10px] tracking-[0.26em] uppercase text-mocha mb-3">Ще моделі</p><h2 className="font-heading text-3xl md:text-4xl text-espresso">Схожі ліжка</h2></div><Link to="/catalog/beds" className="text-xs uppercase tracking-[0.14em] text-espresso border-b border-espresso/30 pb-1">Усі ліжка</Link></div>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">{initialRelated.map((item) => <ProductCard key={item.id || item.slug} product={item} />)}</div>
             </section>
           )}
         </div>
@@ -418,29 +372,19 @@ export default function BedProduct({ initialProduct, initialRelated = [] }) {
           <div className="hidden min-w-0 md:block">
             <p className="truncate text-[11px] text-mocha">{size ? `${size} · ` : ''}{product.name}</p>
             <div className="mt-0.5 flex items-baseline gap-2">
-              <span className={`font-heading text-[24px] font-semibold tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{animatedPrice.toLocaleString('uk-UA')} ₴</span>
-              {discounted && <span className="text-[12px] text-mocha line-through tabular-nums">{animatedPreviousPrice.toLocaleString('uk-UA')} ₴</span>}
+              <span className={`font-heading text-[24px] font-semibold tabular-nums ${discounted ? 'text-[#C8643B]' : 'text-espresso'}`}>{price.toLocaleString('uk-UA')} ₴</span>
+              {discounted && <span className="text-[12px] text-mocha line-through tabular-nums">{previousPrice.toLocaleString('uk-UA')} ₴</span>}
             </div>
           </div>
 
           <div className="ml-auto grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:min-w-[360px]">
-            <button type="button" onClick={() => setConsultationOpen(true)} className="ui-radius-sm min-h-11 border border-[#C8643B] px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#C8643B] inline-flex items-center justify-center gap-2">
-              <Phone className="w-4 h-4" /> Дзвінок
-            </button>
-            <button type="button" onClick={addToCart} disabled={!price || !inStock} className="ui-radius-sm min-h-11 bg-espresso px-7 text-[11px] font-semibold uppercase tracking-[0.14em] text-milk inline-flex items-center justify-center gap-3 disabled:cursor-not-allowed disabled:opacity-45">
-              Купити <ArrowRight className="w-4 h-4" />
-            </button>
+            <button type="button" onClick={() => setConsultationOpen(true)} className="ui-radius-sm min-h-11 border border-[#C8643B] px-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#C8643B] inline-flex items-center justify-center gap-2"><Phone className="w-4 h-4" /> Дзвінок</button>
+            <button type="button" onClick={addToCart} disabled={!price || !inStock} className="ui-radius-sm min-h-11 bg-espresso px-7 text-[11px] font-semibold uppercase tracking-[0.14em] text-milk inline-flex items-center justify-center gap-3 disabled:cursor-not-allowed disabled:opacity-45">Купити <ArrowRight className="w-4 h-4" /></button>
           </div>
         </div>
       </div>
 
-      <LeadModal
-        open={consultationOpen}
-        onClose={() => setConsultationOpen(false)}
-        leadType="consultation"
-        product={product}
-        context={leadContext}
-      />
+      <LeadModal open={consultationOpen} onClose={() => setConsultationOpen(false)} leadType="consultation" product={product} context={leadContext} />
     </div>
   );
 }
