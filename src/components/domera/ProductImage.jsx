@@ -7,6 +7,7 @@ export default function ProductImage({
   src,
   alt = '',
   priority = false,
+  loading = 'lazy',
   sizes = '(max-width: 768px) 50vw, 33vw',
   quality = 68,
   className = '',
@@ -44,6 +45,7 @@ export default function ProductImage({
         sizes={sizes}
         quality={quality}
         priority={priority}
+        loading={priority ? undefined : loading}
         fetchPriority={priority ? 'high' : 'auto'}
         style={{ objectFit }}
         onError={onError}
