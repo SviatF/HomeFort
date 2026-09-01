@@ -18,15 +18,14 @@ export default function Reviews() {
       .catch(() => setLoading(false));
   }, []);
 
-  // No real reviews yet — hide the entire section (no fake social proof).
   if (!loading && reviews.length === 0) return null;
 
   const avg = reviews.length
     ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1)
-    : '0.0';
+    : null;
 
   return (
-    <section className="bg-ivory py-24 md:py-36">
+    <section id="reviews" className="bg-ivory py-24 md:py-36 scroll-mt-24">
       <div className="mx-auto max-w-[1440px] px-6 lg:px-12">
         <Reveal className="max-w-2xl mb-14 md:mb-20">
           <p className="text-[11px] tracking-[0.32em] uppercase text-bronze mb-4">Відгуки</p>
@@ -86,7 +85,7 @@ export default function Reviews() {
           </div>
         )}
 
-        {reviews.length > 0 && (
+        {avg && (
           <Reveal className="mt-10 flex items-center gap-6 text-mocha">
             <span className="font-heading text-2xl text-espresso">{avg} / 5</span>
             <span className="text-sm">на основі {reviews.length} {reviews.length === 1 ? 'відгуку' : 'відгуків'} клієнтів</span>
