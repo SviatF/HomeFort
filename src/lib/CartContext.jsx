@@ -2,6 +2,13 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 const CartContext = createContext(null);
+const PURCHASE_INTENT_KEY = 'domera_purchase_intent_at';
+
+function markPurchaseIntent() {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(PURCHASE_INTENT_KEY, String(Date.now())); } catch {}
+  window.dispatchEvent(new CustomEvent('domera:purchase-intent', { detail: { at: Date.now() } }));
+}
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState(() => {
@@ -37,6 +44,7 @@ export function CartProvider({ children }) {
       if (existing) return prev.map((p) => (p === existing ? { ...p, qty: p.qty + (cartItem.qty || 1) } : p));
       return [...prev, { ...cartItem, qty: cartItem.qty || 1, lineId: key }];
     });
+    markPurchaseIntent();
     showToast({ type: 'added', message: 'Додано в кошик' }, 1200);
     if (!suppressUpsell && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('domera:cart-add', { detail: { ...cartItem } }));
@@ -68,7 +76,21 @@ export function CartProvider({ children }) {
   const total = useMemo(() => items.reduce((s, i) => s + i.price * i.qty, 0), [items]);
 
   return (
-    <CartContext.Provider value={{ items, add, remove, undoRemove, updateQty, clear, count, total, isOpen, cartId, open: () => setIsOpen(true), close: () => setIsOpen(false) }}>
+    <CartContext.Provider value={{
+      items,
+      add,
+      remove,
+      undoRemove,
+      updateQty,
+      clear,
+      count,
+      total,
+      isOpen,
+      cartId,
+      markPurchaseIntent,
+      open: () => { markPurchaseIntent(); setIsOpen(true); },
+      close: () => setIsOpen(false),
+    }}>
       {children}
       {toast && <div className="domera-toast" role="status" aria-live="polite"><span>{toast.message}</span>{toast.type === 'removed' && <button type="button" onClick={undoRemove}>Відновити</button>}</div>}
     </CartContext.Provider>
