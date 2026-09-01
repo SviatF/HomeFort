@@ -3,11 +3,16 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 
 const CartContext = createContext(null);
 const PURCHASE_INTENT_KEY = 'domera_purchase_intent_at';
+const CRO_POPUP_KEYS = ['domera_cro_consultation_seen_v2', 'domera_product_popup_seen_at_v1'];
 
 function markPurchaseIntent() {
   if (typeof window === 'undefined') return;
-  try { localStorage.setItem(PURCHASE_INTENT_KEY, String(Date.now())); } catch {}
-  window.dispatchEvent(new CustomEvent('domera:purchase-intent', { detail: { at: Date.now() } }));
+  const now = Date.now();
+  try {
+    localStorage.setItem(PURCHASE_INTENT_KEY, String(now));
+    CRO_POPUP_KEYS.forEach((key) => localStorage.setItem(key, String(now)));
+  } catch {}
+  window.dispatchEvent(new CustomEvent('domera:purchase-intent', { detail: { at: now } }));
 }
 
 export function CartProvider({ children }) {
