@@ -18,7 +18,7 @@
   --type-body: 16px;
   --type-label: 14px;
   --type-card-title: 22px;
-  --type-card-price-mobile: 34px;
+  --type-card-price-mobile: 30px;
   --type-card-price-desktop: 30px;
 }
 
@@ -101,11 +101,13 @@ a:not([data-tap-target='true']) { min-height: 1px; }
 
 @media (max-width: 767px) {
   .product-card-price { font-size: var(--type-card-price-mobile) !important; }
-  .product-card-shell h3 { font-size: 20px !important; }
-  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 20px 10px !important; }
+  .product-card-shell h3 { font-size: 24px !important; }
+  .product-card-media { aspect-ratio: 1 / 1 !important; }
+  .catalog-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 28px !important; }
   .catalog-grid > * { min-width: 0; }
+  .product-card-shell { border-radius: var(--radius-md); }
+  .product-card-shell .ui-action { width: 100%; justify-content: center; text-align: center; }
   .pdp-breadcrumb { display: none !important; }
-  .product-card-shell { border-radius: var(--radius-sm); }
 }
 @media (min-width: 768px) { .product-card-price { font-size: var(--type-card-price-desktop) !important; } }
 
