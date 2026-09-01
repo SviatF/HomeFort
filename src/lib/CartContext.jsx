@@ -30,15 +30,16 @@ export function CartProvider({ children }) {
   };
 
   const add = (item) => {
+    const { suppressUpsell = false, ...cartItem } = item || {};
     setItems((prev) => {
-      const key = lineKey(item);
+      const key = lineKey(cartItem);
       const existing = prev.find((p) => lineKey(p) === key);
-      if (existing) return prev.map((p) => (p === existing ? { ...p, qty: p.qty + (item.qty || 1) } : p));
-      return [...prev, { ...item, qty: item.qty || 1, lineId: key }];
+      if (existing) return prev.map((p) => (p === existing ? { ...p, qty: p.qty + (cartItem.qty || 1) } : p));
+      return [...prev, { ...cartItem, qty: cartItem.qty || 1, lineId: key }];
     });
     showToast({ type: 'added', message: 'Додано в кошик' }, 1200);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('domera:cart-add', { detail: { ...item } }));
+    if (!suppressUpsell && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('domera:cart-add', { detail: { ...cartItem } }));
     }
   };
 
